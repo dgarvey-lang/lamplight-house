@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lamplight House</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+</style>
+<style>
+/* Layout: the house is the scoreboard (rooms light up as chores get done); below it, today's quest list, then the week board and the reward shop. */
+:root{
+  --sky-top:#9fd3ea; --sky-bot:#e8f4ee; --bg:#eef4ef; --card:#ffffff; --ink:#1d2b26; --muted:#5d6f68; --line:#cfdcd5;
+  --house:#c8674a; --roof:#5a3a33; --dark-win:#7d8f99; --lit:#ffcf5c; --grass:#5fa35a; --grass-dark:#3f7d3f;
+  --accent:#2f6f8f; --accent-ink:#ffffff; --coin:#d99a14; --coin-soft:#fbefd2; --ok:#2e7d4f; --ok-soft:#dff1e5; --late:#b5462e; --late-soft:#f8e2dc;
+  --f-display:"Lilita One","Trebuchet MS",system-ui,sans-serif; --f-body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --sky-top:#0d1630; --sky-bot:#2a2f52; --bg:#11161f; --card:#1a212c; --ink:#e9efe9; --muted:#9fb0a9; --line:#2d3846;
+  --house:#7a3f31; --roof:#2b1c19; --dark-win:#2c3640; --lit:#ffc94a; --grass:#2f5a33; --grass-dark:#1f4024;
+  --accent:#7cc3e3; --accent-ink:#0b1a22; --coin:#f2bd4a; --coin-soft:#3a2f14; --ok:#6fd398; --ok-soft:#163226; --late:#ff9a80; --late-soft:#3a1d17;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --sky-top:#0d1630; --sky-bot:#2a2f52; --bg:#11161f; --card:#1a212c; --ink:#e9efe9; --muted:#9fb0a9; --line:#2d3846;
+  --house:#7a3f31; --roof:#2b1c19; --dark-win:#2c3640; --lit:#ffc94a; --grass:#2f5a33; --grass-dark:#1f4024;
+  --accent:#7cc3e3; --accent-ink:#0b1a22; --coin:#f2bd4a; --coin-soft:#3a2f14; --ok:#6fd398; --ok-soft:#163226; --late:#ff9a80; --late-soft:#3a1d17;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.5}
+.wrap{max-width:860px;margin:0 auto;padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;margin:0;letter-spacing:.01em;text-wrap:balance}
+h1{font-size:clamp(30px,7vw,44px);line-height:1}
+h2{font-size:26px;line-height:1.1}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.date{color:var(--muted);font-weight:700}
+.stats{display:flex;gap:10px;flex-wrap:wrap}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 14px;display:flex;flex-direction:column;min-width:96px}
+.stat b{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.stat.coins b{color:var(--coin)}
+.lvlbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:4px}
+.lvlbar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.scene{border-radius:20px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(var(--sky-top),var(--sky-bot))}
+.scene svg{display:block;width:100%;height:auto}
+.scene .cap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:10px 16px;background:var(--card);border-top:1px solid var(--line);font-size:15px}
+.win{fill:var(--dark-win);transition:fill .5s}
+.win.on{fill:var(--lit)}
+.win.half{fill:url(#halfLit)}
+.glow{opacity:0;transition:opacity .5s}
+.glow.on{opacity:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px clamp(16px,4vw,26px);display:flex;flex-direction:column;gap:14px}
+.headrow{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+.quests{display:flex;flex-direction:column;gap:10px;list-style:none;margin:0;padding:0}
+.quest{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px}
+.quest .ic{width:40px;height:40px;flex:none;border-radius:12px;background:var(--coin-soft);display:grid;place-items:center;font-size:22px}
+.quest .ic svg{width:24px;height:24px;color:var(--coin)}
+.quest .txt{flex:1;min-width:0}
+.quest .nm{font-weight:700}
+.quest .meta{font-size:14px;color:var(--muted)}
+.quest.late{border-color:var(--late);background:var(--late-soft)}
+.quest.late .meta{color:var(--late);font-weight:700}
+.quest.done{border-style:dashed;opacity:.75}
+.quest.done .nm{text-decoration:line-through}
+.btn{font:inherit;font-weight:700;font-size:15px;border-radius:12px;padding:9px 14px;border:2px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;white-space:nowrap;min-height:42px}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.quiet{background:transparent;color:var(--muted);border-color:var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--coin);outline-offset:2px}
+.group-label{font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-top:4px}
+.empty{border:1.5px dashed var(--line);border-radius:14px;padding:16px;text-align:center;color:var(--muted)}
+/* week board */
+.boardwrap{overflow-x:auto}
+table.board{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+.board th,.board td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:center}
+.board th:first-child,.board td:first-child{text-align:left}
+.board th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.board th.today{color:var(--accent)}
+.dot{display:inline-block;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);vertical-align:middle}
+.dot.plan{border-color:var(--accent)}
+.dot.done{background:var(--ok);border-color:var(--ok)}
+.dot.late{border-color:var(--late);background:var(--late-soft)}
+.board select{font:inherit;font-size:14px;padding:3px 4px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+/* shop */
+.shop{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.reward{border:1.5px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;justify-content:space-between}
+.reward .cost{font-family:var(--f-display);color:var(--coin);font-size:20px}
+.reward .row{display:flex;gap:6px;flex-wrap:wrap}
+.addrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.addrow input{font:inherit;padding:8px 10px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);min-width:0}
+.addrow input#rName{flex:1 1 180px}
+.addrow input#rCost{width:90px}
+.loglist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.loglist li{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.loglist .pts{font-variant-numeric:tabular-nums;font-weight:700;color:var(--coin);white-space:nowrap}
+.loglist .pts.neg{color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:700;z-index:20;max-width:calc(100% - 32px);text-align:center}
+.sync{font-size:13px;color:var(--muted)}
+.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--coin-soft);border-radius:12px;padding:10px 12px}
+details summary{cursor:pointer;font-weight:700}
+@media (prefers-reduced-motion:no-preference){
+  .pop{animation:pop .5s ease-out}@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <p class="date" id="today"></p>
+      <h1>Lamplight House</h1>
+      <p class="muted">Every chore lights a window. Light the whole house before Sunday night for a bonus.</p>
+    </div>
+    <div class="stats">
+      <div class="stat coins"><span>Coins</span><b id="sCoins">0</b></div>
+      <div class="stat"><span>Level</span><b id="sLevel">1</b><div class="lvlbar"><i id="sXp" style="width:0%"></i></div></div>
+      <div class="stat"><span>Week streak</span><b id="sStreak">0</b></div>
+    </div>
+  </header>
+
+  <div class="scene">
+    <svg viewBox="0 0 640 300" role="img" aria-labelledby="sceneTitle">
+      <title id="sceneTitle">Your house. Each window lights up when its chore is done this week.</title>
+      <defs>
+        <linearGradient id="halfLit" x1="0" y1="1" x2="0" y2="0"><stop offset=".5" stop-color="var(--lit)"/><stop offset=".5" stop-color="var(--dark-win)"/></linearGradient>
+        <radialGradient id="glowG"><stop offset="0" stop-color="var(--lit)" stop-opacity=".55"/><stop offset="1" stop-color="var(--lit)" stop-opacity="0"/></radialGradient>
+      </defs>
+      <!-- lawn -->
+      <path d="M0 238 Q160 222 320 236 T640 230 V300 H0z" fill="var(--grass)"/>
+      <g id="lawnStripes" class="glow"><path d="M30 260 h120 M60 276 h140 M440 262 h150 M470 280 h120" stroke="var(--grass-dark)" stroke-width="6" stroke-linecap="round"/></g>
+      <g id="lawnShaggy" fill="var(--grass-dark)"><path d="M40 252 l4 -14 l4 14z M70 258 l4 -16 l4 16z M110 254 l4 -14 l4 14z M480 256 l4 -16 l4 16z M520 252 l4 -14 l4 14z M560 258 l4 -16 l4 16z M150 270 l4 -12 l4 12z M590 272 l4 -12 l4 12z"/></g>
+      <!-- house body -->
+      <rect x="170" y="110" width="300" height="130" fill="var(--house)"/>
+      <polygon points="150,114 320,30 490,114" fill="var(--roof)"/>
+      <rect x="400" y="46" width="24" height="46" fill="var(--roof)"/>
+      <!-- attic office window: bills -->
+      <circle id="g-bills" class="glow" cx="320" cy="82" r="34" fill="url(#glowG)"/>
+      <circle id="w-bills" class="win" cx="320" cy="82" r="16"/>
+      <!-- upper floor: bathroom, laundry, dusting -->
+      <g id="g-bath" class="glow"><circle cx="215" cy="142" r="34" fill="url(#glowG)"/></g>
+      <rect id="w-bath" class="win" x="198" y="126" width="34" height="34" rx="3"/>
+      <g id="g-laundry" class="glow"><circle cx="320" cy="142" r="34" fill="url(#glowG)"/></g>
+      <rect id="w-laundry" class="win" x="303" y="126" width="34" height="34" rx="3"/>
+      <g id="g-dust" class="glow"><circle cx="425" cy="142" r="34" fill="url(#glowG)"/></g>
+      <rect id="w-dust" class="win" x="408" y="126" width="34" height="34" rx="3"/>
+      <!-- ground floor: kitchen (dishes), turtle tank, door -->
+      <g id="g-dishes" class="glow"><circle cx="215" cy="200" r="36" fill="url(#glowG)"/></g>
+      <rect id="w-dishes" class="win" x="194" y="182" width="42" height="36" rx="3"/>
+      <g id="g-turtle" class="glow"><circle cx="425" cy="200" r="36" fill="url(#glowG)"/></g>
+      <rect id="w-turtle" class="win" x="404" y="182" width="42" height="36" rx="3"/>
+      <g id="turtle" class="glow"><ellipse cx="425" cy="208" rx="9" ry="5" fill="var(--grass-dark)"/><circle cx="436" cy="206" r="3" fill="var(--grass-dark)"/></g>
+      <rect x="300" y="180" width="40" height="60" rx="4" fill="var(--roof)"/>
+      <circle cx="332" cy="212" r="2.5" fill="var(--lit)"/>
+      <g stroke="var(--roof)" stroke-width="2" fill="none"><path d="M215 126v34M198 143h34M320 126v34M303 143h34M425 126v34M408 143h34M215 182v36M425 182v36"/></g>
+      <!-- plants: window boxes -->
+      <rect x="190" y="218" width="50" height="9" rx="2" fill="var(--roof)"/>
+      <rect x="400" y="218" width="50" height="9" rx="2" fill="var(--roof)"/>
+      <g id="plantsHappy" class="glow" fill="var(--grass)"><circle cx="200" cy="214" r="6"/><circle cx="214" cy="211" r="7"/><circle cx="229" cy="214" r="6"/><circle cx="410" cy="214" r="6"/><circle cx="424" cy="211" r="7"/><circle cx="439" cy="214" r="6"/><circle cx="214" cy="205" r="3" fill="#e2557b"/><circle cx="424" cy="205" r="3" fill="#e2557b"/></g>
+      <g id="plantsDroopy" stroke="var(--muted)" stroke-width="2.5" fill="none" stroke-linecap="round"><path d="M200 218 q-2 -8 -8 -6 M214 218 q0 -10 8 -8 M229 218 q2 -8 8 -4 M410 218 q-2 -8 -8 -6 M424 218 q0 -10 8 -8 M439 218 q2 -8 8 -4"/></g>
+      <!-- Luna on the porch -->
+      <g id="luna" transform="translate(356 222)">
+        <ellipse cx="0" cy="10" rx="16" ry="9" fill="var(--roof)"/>
+        <circle cx="13" cy="0" r="8" fill="var(--roof)"/>
+        <path d="M8 -6 l2 -7 l4 5z M15 -6 l3 -7 l3 6z" fill="var(--roof)"/>
+        <path d="M-16 8 q-10 -6 -6 -16" stroke="var(--roof)" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <g id="lunaShine" class="glow"><path d="M-4 -8 l2 -5 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2z" fill="var(--lit)"/><path d="M24 -14 l1.5 -3.5 l1.5 3.5 l3.5 1.5 l-3.5 1.5 l-1.5 3.5 l-1.5 -3.5 l-3.5 -1.5z" fill="var(--lit)"/></g>
+      </g>
+      <!-- path -->
+      <path d="M305 240 q-10 30 -40 60 h110 q-30 -30 -35 -60z" fill="var(--sky-bot)" opacity=".5"/>
+    </svg>
+    <div class="cap"><span id="capLit">0 of 9 windows lit</span><span class="sync" id="sync">Loading your save…</span></div>
+  </div>
+
+  <section class="card" aria-labelledby="qTitle">
+    <div class="headrow"><h2 id="qTitle">Today's quests</h2><span class="muted small" id="qSub"></span></div>
+    <div id="questArea"></div>
+  </section>
+
+  <section class="card" aria-labelledby="wTitle">
+    <div class="headrow"><h2 id="wTitle">This week</h2><span class="muted small" id="wRange"></span></div>
+    <p class="muted small">Blue rings are the planned days. Change a chore's day with its dropdown. Finishing on or before the planned day earns +5 on-time coins.</p>
+    <div class="boardwrap"><table class="board" id="board"></table></div>
+  </section>
+
+  <section class="card" aria-labelledby="sTitle">
+    <div class="headrow"><h2 id="sTitle">Reward shop</h2><span class="muted small">Spend coins on treats you set yourself</span></div>
+    <div class="shop" id="shop"></div>
+    <div class="addrow">
+      <input id="rName" type="text" maxlength="40" placeholder="New reward, e.g. Movie night">
+      <input id="rCost" type="number" min="5" max="9999" step="5" placeholder="Coins">
+      <button class="btn ghost" id="rAdd">Add reward</button>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="lTitle">
+    <div class="headrow"><h2 id="lTitle">Recent activity</h2><button class="btn quiet" id="undoBtn" disabled>Undo last chore</button></div>
+    <ul class="loglist" id="log"></ul>
+    <details>
+      <summary>How scoring works</summary>
+      <ul class="muted small">
+        <li>Each chore pays the coins shown on its card. Bigger jobs pay more.</li>
+        <li>On-time bonus: +5 coins when you finish on or before the planned day.</li>
+        <li>Full house bonus: +50 coins for every week where every chore got done (dishes twice).</li>
+        <li>Week streak counts full-house weeks in a row. The current week counts once it's complete.</li>
+        <li>Levels come from all coins earned, not what you have left, so spending never lowers your level. Every 150 earned is a level.</li>
+        <li>Weeks run Monday to Sunday.</li>
+      </ul>
+    </details>
+  </section>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAYS_LONG=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const ON_TIME=5, SWEEP=50, LEVEL_XP=150;
+const CHORES=[
+  {id:'bath',   name:'Clean bathrooms', pts:30, times:1, win:'bath',   ic:'🛁', days:[5]},
+  {id:'dust',   name:'Dust',            pts:15, times:1, win:'dust',   ic:'🪶', days:[1]},
+  {id:'plants', name:'Water plants',    pts:10, times:1, win:'plants', ic:'🪴', days:[2]},
+  {id:'lawn',   name:'Mow lawn',        pts:30, times:1, win:'lawn',   ic:'🌱', days:[5]},
+  {id:'laundry',name:'Laundry',         pts:20, times:1, win:'laundry',ic:'🧺', days:[0]},
+  {id:'turtle', name:'Clean turtle tank',pts:25,times:1, win:'turtle', ic:'🐢', days:[3]},
+  {id:'luna',   name:'Brush Luna',      pts:10, times:1, win:'luna',   ic:'🐾', days:[4]},
+  {id:'bills',  name:'Pay bills and file',pts:20,times:1,win:'bills',  ic:'🧾', days:[2]},
+  {id:'dishes', name:'Put dishes away', pts:10, times:2, win:'dishes', ic:'🍽️', days:[0,3]}
+];
+const BYID=Object.fromEntries(CHORES.map(c=>[c.id,c]));
+const DEFAULT_REWARDS=[{id:'r1',name:'Fancy coffee out',cost:60},{id:'r2',name:'An hour of guilt-free gaming',cost:100},{id:'r3',name:'Takeout night',cost:250}];
+const STORE_KEY='lamplight-house-v1';
+
+/* ---------- dates (weeks start Monday, local time) ---------- */
+const dayIdx=d=>(d.getDay()+6)%7;
+function weekStart(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-dayIdx(x));return x}
+const wkKey=d=>{const s=weekStart(d);return s.getFullYear()+'-'+String(s.getMonth()+1).padStart(2,'0')+'-'+String(s.getDate()).padStart(2,'0')};
+const fmtDate=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+
+/* ---------- state ---------- */
+function fresh(){return{log:[],spent:[],rewards:DEFAULT_REWARDS.slice(),plan:{}}}
+let S=fresh(), ref=null, writing=Promise.resolve(), pendingUndo=null, confirmId=null;
+function daysFor(c){const p=S.plan&&S.plan[c.id];return Array.isArray(p)&&p.length===c.times?p:c.days}
+
+function save(){
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(S))}catch(e){}
+  if(!ref)return;
+  const body=JSON.parse(JSON.stringify(S));
+  writing=writing.then(()=>ref.set(body)).then(()=>{setSync('Saved')},e=>{setSync(e&&e.code==='permission_denied'?'View only: changes stay on this device':'Couldn\'t save to the cloud just now. Saved on this device.')});
+}
+function setSync(t){$('sync').textContent=t}
+
+/* ---------- derived numbers ---------- */
+function weekCounts(key){const m={};for(const e of S.log){if(e.wk===key)m[e.chore]=(m[e.chore]||0)+1}return m}
+function weekFull(key){const m=weekCounts(key);return CHORES.every(c=>(m[c.id]||0)>=c.times)}
+function derive(){
+  const now=new Date(), cur=wkKey(now);
+  const weeks=[...new Set(S.log.map(e=>e.wk))];
+  const fullWeeks=weeks.filter(weekFull);
+  const earned=S.log.reduce((a,e)=>a+e.pts+(e.bonus||0),0)+fullWeeks.length*SWEEP;
+  const spent=S.spent.reduce((a,e)=>a+e.cost,0);
+  let streak=0;const d=weekStart(now);
+  if(!weekFull(cur))d.setDate(d.getDate()-7);
+  while(weekFull(wkKey(d))){streak++;d.setDate(d.getDate()-7)}
+  return{coins:earned-spent,earned,streak,level:Math.floor(earned/LEVEL_XP)+1,xpPct:(earned%LEVEL_XP)/LEVEL_XP*100,cur,counts:weekCounts(cur),full:weekFull(cur)};
+}
+
+/* ---------- actions ---------- */
+function complete(id){
+  const c=BYID[id],now=new Date(),D=derive(),k=D.counts[id]||0;
+  if(k>=c.times)return;
+  const planned=daysFor(c)[k], onTime=dayIdx(now)<=planned;
+  const entry={id:'e'+now.getTime().toString(36)+Math.random().toString(36).slice(2,6),chore:id,at:now.toISOString(),wk:D.cur,pts:c.pts,bonus:onTime?ON_TIME:0};
+  S.log.push(entry);
+  save();
+  const after=derive();
+  let msg=`+${c.pts+entry.bonus} coins for ${c.name.toLowerCase()}`+(onTime?' (on time!)':'');
+  if(after.full&&!D.full)msg=`Full house! Every window is lit. +${SWEEP} bonus coins`;
+  else if(after.level>D.level)msg+=` · Level ${after.level}!`;
+  toast(msg);render(id);
+}
+function undo(){
+  if(!S.log.length)return;
+  const e=S.log.pop();save();toast('Undid '+BYID[e.chore].name.toLowerCase());render();
+}
+function buy(rid){
+  const r=S.rewards.find(x=>x.id===rid);if(!r)return;
+  if(derive().coins<r.cost){toast(`You need ${r.cost-derive().coins} more coins for that`);return}
+  S.spent.push({reward:r.name,cost:r.cost,at:new Date().toISOString()});confirmId=null;save();toast('Enjoy: '+r.name+'!');render();
+}
+function addReward(){
+  const name=$('rName').value.trim().replace(/\s+/g,' '),cost=Math.round(+$('rCost').value);
+  if(!name){toast('Give the reward a name');return}
+  if(!(cost>=5&&cost<=9999)){toast('Set a price between 5 and 9999 coins');return}
+  S.rewards.push({id:'r'+Date.now().toString(36),name,cost});$('rName').value='';$('rCost').value='';save();render();
+}
+function removeReward(rid){S.rewards=S.rewards.filter(r=>r.id!==rid);confirmId=null;save();render()}
+function setPlan(id,slot,day){
+  const c=BYID[id],p=daysFor(c).slice();p[slot]=day;if(c.times>1)p.sort((a,b)=>a-b);
+  S.plan=Object.assign({},S.plan,{[id]:p});save();render();
+}
+
+/* ---------- render ---------- */
+let toastT=null;
+function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,3200)}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+function render(popId){
+  const now=new Date(),D=derive(),today=dayIdx(now);
+  $('today').textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  $('sCoins').textContent=D.coins;$('sLevel').textContent=D.level;$('sStreak').textContent=D.streak;$('sXp').style.width=D.xpPct+'%';
+  // house
+  let lit=0;
+  for(const c of CHORES){
+    const k=D.counts[c.id]||0,on=k>=c.times,half=k>0&&!on;if(on)lit++;
+    const w=$('w-'+c.win),g=$('g-'+c.win);
+    if(w){w.classList.toggle('on',on);w.classList.toggle('half',half)}
+    if(g)g.classList.toggle('on',on||half);
+  }
+  const lawn=(D.counts.lawn||0)>=1,plants=(D.counts.plants||0)>=1,luna=(D.counts.luna||0)>=1,turtle=(D.counts.turtle||0)>=1;
+  $('lawnStripes').classList.toggle('on',lawn);$('lawnShaggy').style.opacity=lawn?0:1;
+  $('plantsHappy').classList.toggle('on',plants);$('plantsDroopy').style.opacity=plants?0:1;
+  $('lunaShine').classList.toggle('on',luna);$('turtle').classList.toggle('on',turtle);
+  $('capLit').textContent=D.full?'Full house! All 9 windows lit':`${lit} of 9 lit this week`;
+
+  // quests
+  const groups={late:[],today:[],ahead:[],done:[]};
+  for(const c of CHORES){
+    const days=daysFor(c),k=D.counts[c.id]||0;
+    for(let i=0;i<c.times;i++){
+      const it={c,slot:i,day:days[i],label:c.times>1?`${c.name} (${i+1} of ${c.times})`:c.name};
+      if(i<k)groups.done.push(it);
+      else if(i===k){(days[i]<today?groups.late:days[i]===today?groups.today:groups.ahead).push(it)}
+      else groups.ahead.push(Object.assign(it,{waiting:true}));
+    }
+  }
+  groups.ahead.sort((a,b)=>a.day-b.day);
+  const left=groups.late.length+groups.today.length;
+  $('qSub').textContent=left?`${left} to do today`:'Nothing due today';
+  const row=(it,kind)=>{
+    const meta=kind==='late'?`Planned for ${DAYS_LONG[it.day]}. Still worth ${it.c.pts} coins`
+      :kind==='today'?`${it.c.pts} coins + ${ON_TIME} on-time bonus`
+      :kind==='done'?'Done this week'
+      :`Planned for ${DAYS_LONG[it.day]} · ${it.c.pts} coins + ${ON_TIME} if done early`;
+    const btn=kind==='done'?'':it.waiting?`<button class="btn ghost" disabled>Do #${it.slot} first</button>`
+      :`<button class="btn${kind==='ahead'?' ghost':''}" data-do="${it.c.id}">${kind==='ahead'?'Do it early':'Done!'}</button>`;
+    return `<li class="quest ${kind}${popId===it.c.id&&kind==='done'?' pop':''}"><span class="ic" aria-hidden="true">${it.c.ic}</span><span class="txt"><span class="nm">${esc(it.label)}</span><br><span class="meta">${meta}</span></span>${btn}</li>`;
+  };
+  let h='';
+  if(groups.late.length)h+=`<p class="group-label">Catch up</p><ul class="quests">${groups.late.map(i=>row(i,'late')).join('')}</ul>`;
+  if(groups.today.length)h+=`<p class="group-label">Due today</p><ul class="quests">${groups.today.map(i=>row(i,'today')).join('')}</ul>`;
+  if(!left)h+=`<div class="empty">${D.full?'The whole house is lit. Enjoy your week off!':'You\'re caught up for today. Want to get ahead?'}</div>`;
+  if(groups.ahead.length)h+=`<details${left?'':' open'}><summary>Later this week (${groups.ahead.length})</summary><ul class="quests" style="margin-top:10px">${groups.ahead.map(i=>row(i,'ahead')).join('')}</ul></details>`;
+  if(groups.done.length)h+=`<details><summary>Done this week (${groups.done.length})</summary><ul class="quests" style="margin-top:10px">${groups.done.map(i=>row(i,'done')).join('')}</ul></details>`;
+  $('questArea').innerHTML=h;
+
+  // board
+  const ws=weekStart(now),we=new Date(ws);we.setDate(we.getDate()+6);
+  $('wRange').textContent=`${fmtDate(ws)} – ${fmtDate(we)}`;
+  let b='<thead><tr><th>Chore</th>'+DAYS.map((d,i)=>`<th class="${i===today?'today':''}">${d}</th>`).join('')+'<th>Plan</th></tr></thead><tbody>';
+  const doneDays={};for(const e of S.log){if(e.wk===D.cur){(doneDays[e.chore]=doneDays[e.chore]||[]).push(dayIdx(new Date(e.at)))}}
+  for(const c of CHORES){
+    const days=daysFor(c),dd=doneDays[c.id]||[],k=D.counts[c.id]||0;
+    b+=`<tr><td>${esc(c.name)}${c.times>1?' <span class="muted small">×'+c.times+'</span>':''}</td>`;
+    for(let i=0;i<7;i++){
+      let cls='',lbl='';
+      if(dd.includes(i)){cls='done';lbl='done'}
+      else{const slot=days.indexOf(i);if(slot>=0&&slot>=k){cls=i<today?'late':'plan';lbl=i<today?'overdue':'planned'}}
+      b+=`<td><span class="dot ${cls}"${lbl?` title="${lbl}" aria-label="${lbl}"`:''}></span></td>`;
+    }
+    b+='<td>'+days.map((d,s)=>`<select id="plan-${c.id}-${s}" data-plan="${c.id}" data-slot="${s}" aria-label="Planned day for ${esc(c.name)}${c.times>1?' #'+(s+1):''}">${DAYS.map((n,i)=>`<option value="${i}"${i===d?' selected':''}>${n}</option>`).join('')}</select>`).join(' ')+'</td></tr>';
+  }
+  $('board').innerHTML=b+'</tbody>';
+
+  // shop
+  $('shop').innerHTML=S.rewards.map(r=>{
+    const can=D.coins>=r.cost;
+    if(confirmId===r.id)return `<div class="reward"><span>${esc(r.name)}</span><div class="confirm"><span class="small">Remove this reward?</span><button class="btn quiet" data-rmyes="${r.id}">Remove</button><button class="btn ghost" data-rmno="1">Keep</button></div></div>`;
+    return `<div class="reward"><span>${esc(r.name)}</span><span class="cost">${r.cost} coins</span><div class="row"><button class="btn${can?'':' ghost'}" data-buy="${r.id}">${can?'Redeem':`Need ${r.cost-D.coins} more`}</button><button class="btn quiet" data-rm="${r.id}" aria-label="Remove ${esc(r.name)}">✕</button></div></div>`;
+  }).join('')||'<div class="empty">No rewards yet. Add something you\'d like to earn.</div>';
+
+  // log
+  const items=[...S.log.map(e=>({at:e.at,t:BYID[e.chore]?BYID[e.chore].name:e.chore,v:'+'+(e.pts+(e.bonus||0))})),...S.spent.map(e=>({at:e.at,t:'Redeemed: '+e.reward,v:'−'+e.cost,neg:true}))].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,8);
+  $('log').innerHTML=items.length?items.map(i=>`<li><span>${esc(i.t)} <span class="muted small">${new Date(i.at).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</span></span><span class="pts${i.neg?' neg':''}">${i.v}</span></li>`).join(''):'<li class="muted">Nothing yet. Finish a quest above to earn your first coins.</li>';
+  $('undoBtn').disabled=!S.log.length;
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.do)complete(t.dataset.do);
+  else if(t.dataset.buy)buy(t.dataset.buy);
+  else if(t.dataset.rm){confirmId=t.dataset.rm;render()}
+  else if(t.dataset.rmyes)removeReward(t.dataset.rmyes);
+  else if(t.dataset.rmno){confirmId=null;render()}
+});
+document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.plan)setPlan(t.dataset.plan,+t.dataset.slot,+t.value)});
+$('undoBtn').onclick=undo;
+$('rAdd').onclick=addReward;
+$('rName').addEventListener('keydown',e=>{if(e.key==='Enter')addReward()});
+$('rCost').addEventListener('keydown',e=>{if(e.key==='Enter')addReward()});
+
+/* ---------- boot: local copy first, then the cloud save ---------- */
+function adopt(d){
+  if(!d||!Array.isArray(d.log))return;
+  S=Object.assign(fresh(),JSON.parse(JSON.stringify(d)));
+  if(!Array.isArray(S.spent))S.spent=[];if(!Array.isArray(S.rewards))S.rewards=DEFAULT_REWARDS.slice();
+}
+try{const t=localStorage.getItem(STORE_KEY);if(t)adopt(JSON.parse(t))}catch(e){}
+render();
+// redraw at midnight / when returning to the tab so "today" stays right
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
+setInterval(()=>render(),10*60*1000);
+
+(async()=>{
+  const db=window.claude&&window.claude.use?await window.claude.use('db'):null;
+  if(!db){setSync('Saved on this device');return}
+  ref=db.doc('game/state');
+  let first=true;
+  const timer=setTimeout(()=>setSync('Can\'t reach your cloud save yet. Using this device\'s copy.'),10000);
+  ref.onSnapshot(snap=>{
+    if(!snap.metadata.fromCache)clearTimeout(timer);
+    if(snap.exists){adopt(snap.data());try{localStorage.setItem(STORE_KEY,JSON.stringify(S))}catch(e){}render()}
+    else if(first&&!snap.metadata.fromCache&&S.log.length){save()} // move a device-only save up to the cloud
+    if(!snap.metadata.fromCache){first=false;if(!snap.metadata.hasPendingWrites)setSync('Synced across your devices')}
+  },()=>{clearTimeout(timer);setSync('Cloud save is offline. Saving on this device.');ref=null});
+})();
+})();
+</script>
+</body>
+</html>
