@@ -101,6 +101,17 @@ table.board{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
 .sync{font-size:13px;color:var(--muted)}
 .confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--coin-soft);border-radius:12px;padding:10px 12px}
 details summary{cursor:pointer;font-weight:700}
+.actpanel{border-top:1px solid var(--line);padding-top:12px}
+.actpanel>summary{display:inline-block;list-style:none;border:2px solid var(--accent);color:var(--accent);border-radius:12px;padding:8px 14px;min-height:42px}
+.actpanel>summary::-webkit-details-marker{display:none}
+.actpanel[open]>summary{background:var(--accent);color:var(--accent-ink)}
+.actform{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:12px}
+.actform label{display:flex;flex-direction:column;gap:2px;font-size:13px;font-weight:700;color:var(--muted)}
+.actform input,.actform select{font:inherit;font-size:16px;padding:8px 10px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);min-width:0}
+.actform .grow{flex:1 1 200px}
+.actform input#aPts{width:90px}
+.actlist{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.actlist li{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:8px}
 @media (prefers-reduced-motion:no-preference){
   .pop{animation:pop .5s ease-out}@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
 }
@@ -153,11 +164,11 @@ details summary{cursor:pointer;font-weight:700}
       <g id="g-turtle" class="glow"><circle cx="425" cy="200" r="36" fill="url(#glowG)"/></g>
       <rect id="w-turtle" class="win" x="404" y="182" width="42" height="36" rx="3"/>
       <g id="turtle" class="glow"><ellipse cx="425" cy="208" rx="9" ry="5" fill="var(--grass-dark)"/><circle cx="436" cy="206" r="3" fill="var(--grass-dark)"/></g>
-      <!-- ground floor small windows: vacuum (left of door), other (right of door) -->
+      <!-- ground floor small windows: vacuum (left of door), your added activities (right of door) -->
       <g id="g-vacuum" class="glow"><circle cx="268" cy="193" r="30" fill="url(#glowG)"/></g>
       <rect id="w-vacuum" class="win" x="251" y="180" width="34" height="26" rx="3"/>
-      <g id="g-other" class="glow"><circle cx="372" cy="193" r="30" fill="url(#glowG)"/></g>
-      <rect id="w-other" class="win" x="355" y="180" width="34" height="26" rx="3"/>
+      <g id="g-extra" class="glow"><circle cx="372" cy="193" r="30" fill="url(#glowG)"/></g>
+      <rect id="w-extra" class="win" x="355" y="180" width="34" height="26" rx="3"/>
       <rect x="300" y="180" width="40" height="60" rx="4" fill="var(--roof)"/>
       <circle cx="332" cy="212" r="2.5" fill="var(--lit)"/>
       <g stroke="var(--roof)" stroke-width="2" fill="none"><path d="M215 126v34M198 143h34M320 126v34M303 143h34M425 126v34M408 143h34M215 182v36M425 182v36M268 180v26M372 180v26"/></g>
@@ -183,6 +194,17 @@ details summary{cursor:pointer;font-weight:700}
   <section class="card" aria-labelledby="qTitle">
     <div class="headrow"><h2 id="qTitle">Today's quests</h2><span class="muted small" id="qSub"></span></div>
     <div id="questArea"></div>
+    <details class="actpanel" id="actPanel">
+      <summary>+ Add activity</summary>
+      <div class="actform">
+        <label class="grow">Activity<input id="aName" type="text" maxlength="40" placeholder="e.g. Clean out the fridge"></label>
+        <label>Points<input id="aPts" type="number" min="1" max="500" step="5" placeholder="Coins"></label>
+        <label>How often<select id="aFreq"><option value="once">Just once (this week)</option><option value="weekly">Once a week</option><option value="daily">Every day</option></select></label>
+        <label id="aDayWrap">Planned day<select id="aDay"><option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option><option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option><option value="6">Sun</option></select></label>
+        <button class="btn" id="aAdd">Add</button>
+      </div>
+      <ul class="actlist" id="actList"></ul>
+    </details>
   </section>
 
   <section class="card" aria-labelledby="wTitle">
@@ -209,8 +231,8 @@ details summary{cursor:pointer;font-weight:700}
       <ul class="muted small">
         <li>Each chore pays the coins shown on its card. Bigger jobs pay more.</li>
         <li>On-time bonus: +5 coins when you finish on or before the planned day.</li>
-        <li>Full house bonus: +50 coins for every week where every chore got done (dishes twice). "Other" is optional and never blocks the bonus.</li>
-        <li>"Other" is for anything extra you did that isn't on the list. It pays 10 coins once a week.</li>
+        <li>Full house bonus: +50 coins for every week where every chore got done (dishes twice). Activities you add yourself are extra: they earn coins but never block the bonus.</li>
+        <li>Added activities can happen just once (this week only), once a week, or every day. Finishing on or before the planned day earns the on-time bonus too.</li>
         <li>Week streak counts full-house weeks in a row. The current week counts once it's complete.</li>
         <li>Levels come from all coins earned, not what you have left, so spending never lowers your level. Every 150 earned is a level.</li>
         <li>Weeks run Monday to Sunday.</li>
@@ -237,10 +259,20 @@ const CHORES=[
   {id:'luna',   name:'Brush Luna',      pts:10, times:1, win:'luna',   ic:'🐾', days:[4]},
   {id:'bills',  name:'Pay bills and file',pts:20,times:1,win:'bills',  ic:'🧾', days:[2]},
   {id:'dishes', name:'Put dishes away', pts:10, times:2, win:'dishes', ic:'🍽️', days:[0,3]},
-  {id:'vacuum', name:'Vacuum',          pts:15, times:1, win:'vacuum', ic:'🧹', days:[1], since:'2026-11-02'},
-  {id:'other',  name:'Other (something else)',pts:10,times:1,win:'other',ic:'✨', days:[6], optional:true}
+  {id:'vacuum', name:'Vacuum',          pts:15, times:1, win:'vacuum', ic:'🧹', days:[1], since:'2026-11-02'}
 ];
-const BYID=Object.fromEntries(CHORES.map(c=>[c.id,c]));
+const LEGACY_NAMES={other:'Other (something else)'}; // older saves may have "Other" entries
+const FREQ_LABEL={once:'Just once',weekly:'Once a week',daily:'Every day'};
+// Activities you add yourself live in S.custom and become chores for the weeks they apply to.
+function customChores(){
+  const cur=wkKey(new Date());
+  return (S.custom||[]).filter(a=>!a.removed&&(a.freq!=='once'||a.wk===cur)).map(a=>({
+    id:a.id,name:a.name,pts:a.pts,custom:true,freq:a.freq,ic:'⭐',win:null,
+    times:a.freq==='daily'?7:1,days:a.freq==='daily'?[0,1,2,3,4,5,6]:[a.day]}));
+}
+const allChores=()=>CHORES.concat(customChores());
+const choreById=id=>allChores().find(c=>c.id===id);
+function choreName(id){const c=choreById(id);if(c)return c.name;const a=(S.custom||[]).find(x=>x.id===id);return a?a.name:(LEGACY_NAMES[id]||id)}
 const DEFAULT_REWARDS=[{id:'r1',name:'Fancy coffee out',cost:60},{id:'r2',name:'An hour of guilt-free gaming',cost:100},{id:'r3',name:'Takeout night',cost:250}];
 const STORE_KEY='lamplight-house-v1';
 
@@ -251,7 +283,7 @@ const wkKey=d=>{const s=weekStart(d);return s.getFullYear()+'-'+String(s.getMont
 const fmtDate=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
 
 /* ---------- state ---------- */
-function fresh(){return{log:[],spent:[],rewards:DEFAULT_REWARDS.slice(),plan:{}}}
+function fresh(){return{log:[],spent:[],rewards:DEFAULT_REWARDS.slice(),plan:{},custom:[]}}
 let S=fresh(), ref=null, writing=Promise.resolve(), pendingUndo=null, confirmId=null;
 function daysFor(c){const p=S.plan&&S.plan[c.id];return Array.isArray(p)&&p.length===c.times?p:c.days}
 
@@ -264,10 +296,12 @@ function save(){
 function setSync(t){$('sync').textContent=t}
 
 /* ---------- derived numbers ---------- */
+// a daily activity counts as done for today once it has a log entry dated today
+function doneToday(id){const t=new Date().toDateString();return S.log.some(e=>e.chore===id&&new Date(e.at).toDateString()===t)}
 function weekCounts(key){const m={};for(const e of S.log){if(e.wk===key)m[e.chore]=(m[e.chore]||0)+1}return m}
 // "since": a chore added later only counts toward a full house from that week on, so past weeks keep their bonus.
-// "optional": the catch-all "Other" chore never blocks a full house.
-const required=key=>CHORES.filter(c=>!c.optional&&(!c.since||key>=c.since));
+// Only the built-in chores count toward a full house; added activities are extra.
+const required=key=>CHORES.filter(c=>!c.since||key>=c.since);
 function weekFull(key){const m=weekCounts(key);return required(key).every(c=>(m[c.id]||0)>=c.times)}
 function derive(){
   const now=new Date(), cur=wkKey(now);
@@ -283,9 +317,9 @@ function derive(){
 
 /* ---------- actions ---------- */
 function complete(id){
-  const c=BYID[id],now=new Date(),D=derive(),k=D.counts[id]||0;
-  if(k>=c.times)return;
-  const planned=daysFor(c)[k], onTime=dayIdx(now)<=planned;
+  const c=choreById(id),now=new Date(),D=derive(),k=D.counts[id]||0;
+  if(!c||k>=c.times||(c.freq==='daily'&&doneToday(id)))return;
+  const onTime=c.freq==='daily'||dayIdx(now)<=daysFor(c)[k];
   const entry={id:'e'+now.getTime().toString(36)+Math.random().toString(36).slice(2,6),chore:id,at:now.toISOString(),wk:D.cur,pts:c.pts,bonus:onTime?ON_TIME:0};
   S.log.push(entry);
   save();
@@ -297,7 +331,7 @@ function complete(id){
 }
 function undo(){
   if(!S.log.length)return;
-  const e=S.log.pop();save();toast('Undid '+BYID[e.chore].name.toLowerCase());render();
+  const e=S.log.pop();save();toast('Undid '+choreName(e.chore).toLowerCase());render();
 }
 function buy(rid){
   const r=S.rewards.find(x=>x.id===rid);if(!r)return;
@@ -310,9 +344,22 @@ function addReward(){
   if(!(cost>=5&&cost<=9999)){toast('Set a price between 5 and 9999 coins');return}
   S.rewards.push({id:'r'+Date.now().toString(36),name,cost});$('rName').value='';$('rCost').value='';save();render();
 }
+function addActivity(){
+  const name=$('aName').value.trim().replace(/\s+/g,' '),pts=Math.round(+$('aPts').value),freq=$('aFreq').value,day=+$('aDay').value;
+  if(!name){toast('Give the activity a name');return}
+  if(!(pts>=1&&pts<=500)){toast('Set points between 1 and 500');return}
+  S.custom=(S.custom||[]).concat({id:'a'+Date.now().toString(36),name,pts,freq,day,wk:wkKey(new Date())});
+  $('aName').value='';$('aPts').value='';save();toast('Added: '+name);render();
+}
+function removeActivity(aid){
+  // keep the record (marked removed) so coins already earned still show its name in the history
+  S.custom=(S.custom||[]).map(a=>a.id===aid?Object.assign({},a,{removed:true}):a);
+  if(S.plan&&S.plan[aid]){S.plan=Object.assign({},S.plan);delete S.plan[aid]}
+  confirmId=null;save();render();
+}
 function removeReward(rid){S.rewards=S.rewards.filter(r=>r.id!==rid);confirmId=null;save();render()}
 function setPlan(id,slot,day){
-  const c=BYID[id],p=daysFor(c).slice();p[slot]=day;if(c.times>1)p.sort((a,b)=>a-b);
+  const c=choreById(id);if(!c)return;const p=daysFor(c).slice();p[slot]=day;if(c.times>1)p.sort((a,b)=>a-b);
   S.plan=Object.assign({},S.plan,{[id]:p});save();render();
 }
 
@@ -322,7 +369,7 @@ function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTime
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 
 function render(popId){
-  const now=new Date(),D=derive(),today=dayIdx(now);
+  const now=new Date(),D=derive(),today=dayIdx(now),CH=allChores();
   $('today').textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
   $('sCoins').textContent=D.coins;$('sLevel').textContent=D.level;$('sStreak').textContent=D.streak;$('sXp').style.width=D.xpPct+'%';
   // house
@@ -333,20 +380,24 @@ function render(popId){
     if(w){w.classList.toggle('on',on);w.classList.toggle('half',half)}
     if(g)g.classList.toggle('on',on||half);
   }
+  const cus=CH.filter(c=>c.custom),cusDone=cus.filter(c=>c.freq==='daily'?doneToday(c.id):(D.counts[c.id]||0)>=c.times).length,cusAny=cus.some(c=>(D.counts[c.id]||0)>0);
+  const extraOn=cus.length>0&&cusDone===cus.length;if(extraOn)lit++;
+  $('w-extra').classList.toggle('on',extraOn);$('w-extra').classList.toggle('half',cusAny&&!extraOn);$('g-extra').classList.toggle('on',cusAny);
+  const nWin=CHORES.length+(cus.length?1:0);
   const lawn=(D.counts.lawn||0)>=1,plants=(D.counts.plants||0)>=1,luna=(D.counts.luna||0)>=1,turtle=(D.counts.turtle||0)>=1;
   $('lawnStripes').classList.toggle('on',lawn);$('lawnShaggy').style.opacity=lawn?0:1;
   $('plantsHappy').classList.toggle('on',plants);$('plantsDroopy').style.opacity=plants?0:1;
   $('lunaShine').classList.toggle('on',luna);$('turtle').classList.toggle('on',turtle);
-  $('capLit').textContent=D.full?'Full house! Every window that counts is lit':`${lit} of ${CHORES.length} lit this week`;
+  $('capLit').textContent=D.full?'Full house! Every window that counts is lit':`${lit} of ${nWin} lit this week`;
 
   // quests
   const groups={late:[],today:[],ahead:[],done:[]};
-  for(const c of CHORES){
+  for(const c of CH){
     const days=daysFor(c),k=D.counts[c.id]||0;
+    if(c.freq==='daily'){const it={c,slot:0,day:today,label:c.name+' (daily)'};(doneToday(c.id)?groups.done:groups.today).push(it);continue}
     for(let i=0;i<c.times;i++){
       const it={c,slot:i,day:days[i],label:c.times>1?`${c.name} (${i+1} of ${c.times})`:c.name};
       if(i<k)groups.done.push(it);
-      else if(c.optional)groups.ahead.push(Object.assign(it,{optional:true}));
       else if(i===k){(days[i]<today?groups.late:days[i]===today?groups.today:groups.ahead).push(it)}
       else groups.ahead.push(Object.assign(it,{waiting:true}));
     }
@@ -357,11 +408,10 @@ function render(popId){
   const row=(it,kind)=>{
     const meta=kind==='late'?`Planned for ${DAYS_LONG[it.day]}. Still worth ${it.c.pts} coins`
       :kind==='today'?`${it.c.pts} coins + ${ON_TIME} on-time bonus`
-      :kind==='done'?'Done this week'
-      :it.optional?`Optional: anything extra you did this week · ${it.c.pts} coins`
+      :kind==='done'?(it.c.freq==='daily'?'Done today':'Done this week')
       :`Planned for ${DAYS_LONG[it.day]} · ${it.c.pts} coins + ${ON_TIME} if done early`;
     const btn=kind==='done'?'':it.waiting?`<button class="btn ghost" disabled>Do #${it.slot} first</button>`
-      :`<button class="btn${kind==='ahead'?' ghost':''}" data-do="${it.c.id}">${it.optional?'Done!':kind==='ahead'?'Do it early':'Done!'}</button>`;
+      :`<button class="btn${kind==='ahead'?' ghost':''}" data-do="${it.c.id}">${kind==='ahead'?'Do it early':'Done!'}</button>`;
     return `<li class="quest ${kind}${popId===it.c.id&&kind==='done'?' pop':''}"><span class="ic" aria-hidden="true">${it.c.ic}</span><span class="txt"><span class="nm">${esc(it.label)}</span><br><span class="meta">${meta}</span></span>${btn}</li>`;
   };
   let h='';
@@ -377,15 +427,16 @@ function render(popId){
   $('wRange').textContent=`${fmtDate(ws)} – ${fmtDate(we)}`;
   let b='<thead><tr><th>Chore</th>'+DAYS.map((d,i)=>`<th class="${i===today?'today':''}">${d}</th>`).join('')+'<th>Plan</th></tr></thead><tbody>';
   const doneDays={};for(const e of S.log){if(e.wk===D.cur){(doneDays[e.chore]=doneDays[e.chore]||[]).push(dayIdx(new Date(e.at)))}}
-  for(const c of CHORES){
+  for(const c of CH){
     const days=daysFor(c),dd=doneDays[c.id]||[],k=D.counts[c.id]||0;
-    b+=`<tr><td>${esc(c.name)}${c.times>1?' <span class="muted small">×'+c.times+'</span>':''}</td>`;
+    b+=`<tr><td>${c.custom?'⭐ ':''}${esc(c.name)}${c.times>1&&!c.custom?' <span class="muted small">×'+c.times+'</span>':''}</td>`;
     for(let i=0;i<7;i++){
       let cls='',lbl='';
       if(dd.includes(i)){cls='done';lbl='done'}
-      else{const slot=days.indexOf(i);if(slot>=0&&slot>=k&&!c.optional){cls=i<today?'late':'plan';lbl=i<today?'overdue':'planned'}}
+      else{const slot=days.indexOf(i);if(slot>=0&&slot>=k&&c.freq!=='daily'){cls=i<today?'late':'plan';lbl=i<today?'overdue':'planned'}}
       b+=`<td><span class="dot ${cls}"${lbl?` title="${lbl}" aria-label="${lbl}"`:''}></span></td>`;
     }
+    if(c.freq==='daily'){b+='<td class="muted small">Every day</td></tr>';continue}
     b+='<td>'+days.map((d,s)=>`<select id="plan-${c.id}-${s}" data-plan="${c.id}" data-slot="${s}" aria-label="Planned day for ${esc(c.name)}${c.times>1?' #'+(s+1):''}">${DAYS.map((n,i)=>`<option value="${i}"${i===d?' selected':''}>${n}</option>`).join('')}</select>`).join(' ')+'</td></tr>';
   }
   $('board').innerHTML=b+'</tbody>';
@@ -398,9 +449,18 @@ function render(popId){
   }).join('')||'<div class="empty">No rewards yet. Add something you\'d like to earn.</div>';
 
   // log
-  const items=[...S.log.map(e=>({at:e.at,t:BYID[e.chore]?BYID[e.chore].name:e.chore,v:'+'+(e.pts+(e.bonus||0))})),...S.spent.map(e=>({at:e.at,t:'Redeemed: '+e.reward,v:'−'+e.cost,neg:true}))].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,8);
+  const items=[...S.log.map(e=>({at:e.at,t:choreName(e.chore),v:'+'+(e.pts+(e.bonus||0))})),...S.spent.map(e=>({at:e.at,t:'Redeemed: '+e.reward,v:'−'+e.cost,neg:true}))].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,8);
   $('log').innerHTML=items.length?items.map(i=>`<li><span>${esc(i.t)} <span class="muted small">${new Date(i.at).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</span></span><span class="pts${i.neg?' neg':''}">${i.v}</span></li>`).join(''):'<li class="muted">Nothing yet. Finish a quest above to earn your first coins.</li>';
   $('undoBtn').disabled=!S.log.length;
+
+  // your activities
+  $('aDayWrap').hidden=$('aFreq').value==='daily';
+  const acts=(S.custom||[]).filter(a=>!a.removed&&(a.freq!=='once'||a.wk===D.cur));
+  $('actList').innerHTML=acts.length?acts.map(a=>{
+    const when=FREQ_LABEL[a.freq]+(a.freq==='daily'?'':' · '+DAYS_LONG[daysFor(choreById(a.id))[0]]);
+    if(confirmId===a.id)return `<li><span>${esc(a.name)}</span><span class="confirm"><span class="small">Remove this activity?</span><button class="btn quiet" data-actyes="${a.id}">Remove</button><button class="btn ghost" data-rmno="1">Keep</button></span></li>`;
+    return `<li><span>⭐ <b>${esc(a.name)}</b><br><span class="muted small">${when} · ${a.pts} coins</span></span><button class="btn quiet" data-actrm="${a.id}" aria-label="Remove ${esc(a.name)}">Remove</button></li>`;
+  }).join(''):'<li class="muted small">No activities yet. Add one above and it shows up in your quests.</li>';
 }
 
 /* ---------- events ---------- */
@@ -410,11 +470,17 @@ document.addEventListener('click',e=>{
   else if(t.dataset.buy)buy(t.dataset.buy);
   else if(t.dataset.rm){confirmId=t.dataset.rm;render()}
   else if(t.dataset.rmyes)removeReward(t.dataset.rmyes);
+  else if(t.dataset.actrm){confirmId=t.dataset.actrm;render()}
+  else if(t.dataset.actyes)removeActivity(t.dataset.actyes);
   else if(t.dataset.rmno){confirmId=null;render()}
 });
 document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.plan)setPlan(t.dataset.plan,+t.dataset.slot,+t.value)});
 $('undoBtn').onclick=undo;
 $('rAdd').onclick=addReward;
+$('aAdd').onclick=addActivity;
+$('aFreq').onchange=()=>{$('aDayWrap').hidden=$('aFreq').value==='daily'};
+$('aDay').value=String(dayIdx(new Date()));
+['aName','aPts'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')addActivity()}));
 $('rName').addEventListener('keydown',e=>{if(e.key==='Enter')addReward()});
 $('rCost').addEventListener('keydown',e=>{if(e.key==='Enter')addReward()});
 
@@ -422,7 +488,7 @@ $('rCost').addEventListener('keydown',e=>{if(e.key==='Enter')addReward()});
 function adopt(d){
   if(!d||!Array.isArray(d.log))return;
   S=Object.assign(fresh(),JSON.parse(JSON.stringify(d)));
-  if(!Array.isArray(S.spent))S.spent=[];if(!Array.isArray(S.rewards))S.rewards=DEFAULT_REWARDS.slice();
+  if(!Array.isArray(S.spent))S.spent=[];if(!Array.isArray(S.rewards))S.rewards=DEFAULT_REWARDS.slice();if(!Array.isArray(S.custom))S.custom=[];
 }
 try{const t=localStorage.getItem(STORE_KEY);if(t)adopt(JSON.parse(t))}catch(e){}
 render();

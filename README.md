@@ -5,6 +5,7 @@ A chore tracker game: every chore you finish lights a window in the house. Light
 - Earn coins for chores (+5 for finishing on or before the planned day, +50 for a full-house week)
 - Level up from total coins earned and build a weekly streak
 - Plan chore days on the week board
+- Add your own activities (just once, once a week, or every day) with your own point values
 - Spend coins in a reward shop you set up yourself
 
 ## Running it
