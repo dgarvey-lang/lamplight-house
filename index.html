@@ -153,9 +153,14 @@ details summary{cursor:pointer;font-weight:700}
       <g id="g-turtle" class="glow"><circle cx="425" cy="200" r="36" fill="url(#glowG)"/></g>
       <rect id="w-turtle" class="win" x="404" y="182" width="42" height="36" rx="3"/>
       <g id="turtle" class="glow"><ellipse cx="425" cy="208" rx="9" ry="5" fill="var(--grass-dark)"/><circle cx="436" cy="206" r="3" fill="var(--grass-dark)"/></g>
+      <!-- ground floor small windows: vacuum (left of door), other (right of door) -->
+      <g id="g-vacuum" class="glow"><circle cx="268" cy="193" r="30" fill="url(#glowG)"/></g>
+      <rect id="w-vacuum" class="win" x="251" y="180" width="34" height="26" rx="3"/>
+      <g id="g-other" class="glow"><circle cx="372" cy="193" r="30" fill="url(#glowG)"/></g>
+      <rect id="w-other" class="win" x="355" y="180" width="34" height="26" rx="3"/>
       <rect x="300" y="180" width="40" height="60" rx="4" fill="var(--roof)"/>
       <circle cx="332" cy="212" r="2.5" fill="var(--lit)"/>
-      <g stroke="var(--roof)" stroke-width="2" fill="none"><path d="M215 126v34M198 143h34M320 126v34M303 143h34M425 126v34M408 143h34M215 182v36M425 182v36"/></g>
+      <g stroke="var(--roof)" stroke-width="2" fill="none"><path d="M215 126v34M198 143h34M320 126v34M303 143h34M425 126v34M408 143h34M215 182v36M425 182v36M268 180v26M372 180v26"/></g>
       <!-- plants: window boxes -->
       <rect x="190" y="218" width="50" height="9" rx="2" fill="var(--roof)"/>
       <rect x="400" y="218" width="50" height="9" rx="2" fill="var(--roof)"/>
@@ -172,7 +177,7 @@ details summary{cursor:pointer;font-weight:700}
       <!-- path -->
       <path d="M305 240 q-10 30 -40 60 h110 q-30 -30 -35 -60z" fill="var(--sky-bot)" opacity=".5"/>
     </svg>
-    <div class="cap"><span id="capLit">0 of 9 windows lit</span><span class="sync" id="sync">Loading your save…</span></div>
+    <div class="cap"><span id="capLit">0 windows lit</span><span class="sync" id="sync">Loading your save…</span></div>
   </div>
 
   <section class="card" aria-labelledby="qTitle">
@@ -204,7 +209,8 @@ details summary{cursor:pointer;font-weight:700}
       <ul class="muted small">
         <li>Each chore pays the coins shown on its card. Bigger jobs pay more.</li>
         <li>On-time bonus: +5 coins when you finish on or before the planned day.</li>
-        <li>Full house bonus: +50 coins for every week where every chore got done (dishes twice).</li>
+        <li>Full house bonus: +50 coins for every week where every chore got done (dishes twice). "Other" is optional and never blocks the bonus.</li>
+        <li>"Other" is for anything extra you did that isn't on the list. It pays 10 coins once a week.</li>
         <li>Week streak counts full-house weeks in a row. The current week counts once it's complete.</li>
         <li>Levels come from all coins earned, not what you have left, so spending never lowers your level. Every 150 earned is a level.</li>
         <li>Weeks run Monday to Sunday.</li>
@@ -230,7 +236,9 @@ const CHORES=[
   {id:'turtle', name:'Clean turtle tank',pts:25,times:1, win:'turtle', ic:'🐢', days:[3]},
   {id:'luna',   name:'Brush Luna',      pts:10, times:1, win:'luna',   ic:'🐾', days:[4]},
   {id:'bills',  name:'Pay bills and file',pts:20,times:1,win:'bills',  ic:'🧾', days:[2]},
-  {id:'dishes', name:'Put dishes away', pts:10, times:2, win:'dishes', ic:'🍽️', days:[0,3]}
+  {id:'dishes', name:'Put dishes away', pts:10, times:2, win:'dishes', ic:'🍽️', days:[0,3]},
+  {id:'vacuum', name:'Vacuum',          pts:15, times:1, win:'vacuum', ic:'🧹', days:[1], since:'2026-11-02'},
+  {id:'other',  name:'Other (something else)',pts:10,times:1,win:'other',ic:'✨', days:[6], optional:true}
 ];
 const BYID=Object.fromEntries(CHORES.map(c=>[c.id,c]));
 const DEFAULT_REWARDS=[{id:'r1',name:'Fancy coffee out',cost:60},{id:'r2',name:'An hour of guilt-free gaming',cost:100},{id:'r3',name:'Takeout night',cost:250}];
@@ -257,7 +265,10 @@ function setSync(t){$('sync').textContent=t}
 
 /* ---------- derived numbers ---------- */
 function weekCounts(key){const m={};for(const e of S.log){if(e.wk===key)m[e.chore]=(m[e.chore]||0)+1}return m}
-function weekFull(key){const m=weekCounts(key);return CHORES.every(c=>(m[c.id]||0)>=c.times)}
+// "since": a chore added later only counts toward a full house from that week on, so past weeks keep their bonus.
+// "optional": the catch-all "Other" chore never blocks a full house.
+const required=key=>CHORES.filter(c=>!c.optional&&(!c.since||key>=c.since));
+function weekFull(key){const m=weekCounts(key);return required(key).every(c=>(m[c.id]||0)>=c.times)}
 function derive(){
   const now=new Date(), cur=wkKey(now);
   const weeks=[...new Set(S.log.map(e=>e.wk))];
@@ -326,7 +337,7 @@ function render(popId){
   $('lawnStripes').classList.toggle('on',lawn);$('lawnShaggy').style.opacity=lawn?0:1;
   $('plantsHappy').classList.toggle('on',plants);$('plantsDroopy').style.opacity=plants?0:1;
   $('lunaShine').classList.toggle('on',luna);$('turtle').classList.toggle('on',turtle);
-  $('capLit').textContent=D.full?'Full house! All 9 windows lit':`${lit} of 9 lit this week`;
+  $('capLit').textContent=D.full?'Full house! Every window that counts is lit':`${lit} of ${CHORES.length} lit this week`;
 
   // quests
   const groups={late:[],today:[],ahead:[],done:[]};
@@ -335,6 +346,7 @@ function render(popId){
     for(let i=0;i<c.times;i++){
       const it={c,slot:i,day:days[i],label:c.times>1?`${c.name} (${i+1} of ${c.times})`:c.name};
       if(i<k)groups.done.push(it);
+      else if(c.optional)groups.ahead.push(Object.assign(it,{optional:true}));
       else if(i===k){(days[i]<today?groups.late:days[i]===today?groups.today:groups.ahead).push(it)}
       else groups.ahead.push(Object.assign(it,{waiting:true}));
     }
@@ -346,9 +358,10 @@ function render(popId){
     const meta=kind==='late'?`Planned for ${DAYS_LONG[it.day]}. Still worth ${it.c.pts} coins`
       :kind==='today'?`${it.c.pts} coins + ${ON_TIME} on-time bonus`
       :kind==='done'?'Done this week'
+      :it.optional?`Optional: anything extra you did this week · ${it.c.pts} coins`
       :`Planned for ${DAYS_LONG[it.day]} · ${it.c.pts} coins + ${ON_TIME} if done early`;
     const btn=kind==='done'?'':it.waiting?`<button class="btn ghost" disabled>Do #${it.slot} first</button>`
-      :`<button class="btn${kind==='ahead'?' ghost':''}" data-do="${it.c.id}">${kind==='ahead'?'Do it early':'Done!'}</button>`;
+      :`<button class="btn${kind==='ahead'?' ghost':''}" data-do="${it.c.id}">${it.optional?'Done!':kind==='ahead'?'Do it early':'Done!'}</button>`;
     return `<li class="quest ${kind}${popId===it.c.id&&kind==='done'?' pop':''}"><span class="ic" aria-hidden="true">${it.c.ic}</span><span class="txt"><span class="nm">${esc(it.label)}</span><br><span class="meta">${meta}</span></span>${btn}</li>`;
   };
   let h='';
@@ -370,7 +383,7 @@ function render(popId){
     for(let i=0;i<7;i++){
       let cls='',lbl='';
       if(dd.includes(i)){cls='done';lbl='done'}
-      else{const slot=days.indexOf(i);if(slot>=0&&slot>=k){cls=i<today?'late':'plan';lbl=i<today?'overdue':'planned'}}
+      else{const slot=days.indexOf(i);if(slot>=0&&slot>=k&&!c.optional){cls=i<today?'late':'plan';lbl=i<today?'overdue':'planned'}}
       b+=`<td><span class="dot ${cls}"${lbl?` title="${lbl}" aria-label="${lbl}"`:''}></span></td>`;
     }
     b+='<td>'+days.map((d,s)=>`<select id="plan-${c.id}-${s}" data-plan="${c.id}" data-slot="${s}" aria-label="Planned day for ${esc(c.name)}${c.times>1?' #'+(s+1):''}">${DAYS.map((n,i)=>`<option value="${i}"${i===d?' selected':''}>${n}</option>`).join('')}</select>`).join(' ')+'</td></tr>';
