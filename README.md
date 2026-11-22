@@ -13,3 +13,13 @@ A chore tracker game: every chore you finish lights a window in the house. Light
 It's a single self-contained page. Open `index.html` in a browser, or serve it with GitHub Pages.
 
 When opened outside Claude, progress is saved in the browser's local storage on that device (the cloud sync only works in the Claude-hosted version).
+
+## Daily Chore Planner (`chores.html`)
+
+A phone-friendly planner built from the full chore list (daily, weekly, twice a month, monthly, every 3 and 6 months, yearly). Each chore gets a fixed spot on the calendar so the work is spread out, and the **Today** tab shows just what's due that day.
+
+- Tap a chore to check it off; tap **Tomorrow** to push it a day
+- Anything missed shows up under **Catch up** until it's done (or its next turn comes around)
+- **Coming up** shows the next two weeks and the bigger jobs ahead
+- **Chores** lets you rename, reschedule, add or delete chores; "Pick the least busy day" places a chore automatically
+- Mowing only shows April through November

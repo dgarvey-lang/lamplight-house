@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Daily Chore Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;600;700&display=swap">
+<style>
+:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+</style>
+<style>
+/* Layout: one-column phone app. Sticky day header, task list, fixed bottom tab bar (Today / Ahead / Chores). */
+:root{
+  --bg:#edf1f6; --card:#ffffff; --ink:#17212e; --muted:#5a6779; --line:#d5dce6; --soft:#e3e9f1;
+  --accent:#2456c4; --accent-ink:#ffffff; --accent-soft:#dfe8fb;
+  --done:#1d8556; --done-soft:#dcf1e6; --late:#b8420f; --late-soft:#fbe7dc;
+  --c-daily:#6b7686; --c-weekly:#2456c4; --c-twice:#0f7c86; --c-monthly:#7140b8; --c-quarter:#a0590d; --c-half:#a33c6a; --c-year:#b0302a;
+  --f-display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif; --f-body:"Figtree","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141b; --card:#18202b; --ink:#e8edf3; --muted:#98a5b6; --line:#2a3544; --soft:#212b38;
+  --accent:#86aaf5; --accent-ink:#0c1526; --accent-soft:#1f2c47;
+  --done:#5fd29b; --done-soft:#173327; --late:#ff9f6e; --late-soft:#3a2117;
+  --c-daily:#a3adbb; --c-weekly:#86aaf5; --c-twice:#5fc9d2; --c-monthly:#b997f0; --c-quarter:#e7a95a; --c-half:#ec8ab5; --c-year:#f28b84;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141b; --card:#18202b; --ink:#e8edf3; --muted:#98a5b6; --line:#2a3544; --soft:#212b38;
+  --accent:#86aaf5; --accent-ink:#0c1526; --accent-soft:#1f2c47;
+  --done:#5fd29b; --done-soft:#173327; --late:#ff9f6e; --late-soft:#3a2117;
+  --c-daily:#a3adbb; --c-weekly:#86aaf5; --c-twice:#5fc9d2; --c-monthly:#b997f0; --c-quarter:#e7a95a; --c-half:#ec8ab5; --c-year:#f28b84;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+.wrap{max-width:620px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 calc(96px + env(safe-area-inset-bottom,0px))}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 12px;display:flex;flex-direction:column;gap:10px}
+.dayrow{display:flex;align-items:center;gap:8px}
+.dayrow h1{font-size:clamp(26px,7.5vw,34px);font-weight:800;line-height:1.05;flex:1;min-width:0}
+.dayrow h1 small{display:block;font-family:var(--f-body);font-size:14px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
+.iconbtn{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;font-size:20px;line-height:1;flex:none}
+.pill{border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:700}
+.prog{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--muted);font-weight:600}
+.bar{flex:1;height:10px;border-radius:5px;background:var(--soft);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--done);border-radius:5px;transition:width .35s}
+.prog b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* lists */
+.section{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+.section h2{font-size:15px;font-family:var(--f-body);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.section.late h2{color:var(--late)}
+.list{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0}
+.task{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 10px 10px 12px;min-height:62px}
+.task.late{border-color:color-mix(in srgb,var(--late) 45%,var(--line));background:var(--late-soft)}
+.check{width:34px;height:34px;flex:none;border-radius:50%;border:2.5px solid var(--muted);background:transparent;display:grid;place-items:center;padding:0;transition:background .15s,border-color .15s}
+.check svg{width:18px;height:18px;opacity:0;transform:scale(.6);transition:all .18s}
+.task.done .check{background:var(--done);border-color:var(--done)}
+.task.done .check svg{opacity:1;transform:none}
+.task .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.task .name{font-weight:600;font-size:17px;overflow-wrap:anywhere}
+.task.done .name{text-decoration:line-through;color:var(--muted)}
+.meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--fc,var(--muted))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--fc,var(--muted))}
+.later{flex:none;border:none;background:var(--soft);color:var(--ink);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:22px 16px;text-align:center;color:var(--muted)}
+.note{font-size:14px;color:var(--muted)}
+
+/* ahead */
+.days{display:flex;flex-direction:column;gap:8px}
+.drow{display:grid;grid-template-columns:62px 1fr auto;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;text-align:left;width:100%}
+.drow .d{display:flex;flex-direction:column;line-height:1.1}
+.drow .d b{font-family:var(--f-display);font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.drow .d span{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.drow .what{min-width:0;font-size:15px;overflow-wrap:anywhere}
+.drow .n{font-weight:700;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.drow.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.big{display:flex;flex-direction:column}
+.big li{display:flex;justify-content:space-between;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line)}
+.big li:last-child{border-bottom:none}
+.big .when{color:var(--muted);font-size:14px;white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* chores */
+.crow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;width:100%;text-align:left}
+.crow .body{flex:1;min-width:0}
+.crow .name{font-weight:600}
+.crow .sub{font-size:14px;color:var(--muted)}
+.crow .go{color:var(--muted);font-size:20px}
+.addbtn{width:100%;border:none;background:var(--accent);color:var(--accent-ink);border-radius:14px;padding:14px;font-weight:700;font-size:17px;margin-top:18px}
+
+/* editor sheet */
+.sheet{position:fixed;inset:0;z-index:20;background:color-mix(in srgb,#000 45%,transparent);display:flex;align-items:flex-end;justify-content:center}
+.panel{background:var(--card);width:100%;max-width:620px;max-height:92%;overflow:auto;border-radius:20px 20px 0 0;padding-block:20px calc(20px + env(safe-area-inset-bottom,0px));padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.panel h2{font-size:24px;font-weight:800}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label,.field .lbl{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.field input,.field select{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:11px 12px;font-size:17px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.slot{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--line);border-radius:12px}
+.hint{font-size:14px;color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row button{flex:1;min-width:120px;border-radius:12px;padding:12px;font-weight:700;border:1px solid var(--line);background:var(--soft)}
+.row .primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.row .danger{color:var(--late);background:transparent;border-color:var(--late)}
+.chk{display:flex;align-items:center;gap:10px;font-size:16px}
+.chk input{width:22px;height:22px}
+
+/* tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.tabs button{flex:1;max-width:200px;border:none;background:none;padding:10px 4px 12px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:13px;font-weight:700;color:var(--muted)}
+.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tabs button[aria-selected="true"]{color:var(--accent)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 14px;font-weight:600;font-size:15px;display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px)}
+.toast button{border:none;background:none;color:var(--accent-soft);font-weight:700;text-decoration:underline;padding:0}
+.sync{font-size:12px;color:var(--muted);text-align:center;margin-top:22px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section id="vToday">
+    <div class="top">
+      <div class="dayrow">
+        <button class="iconbtn" id="prevDay" aria-label="Previous day">‹</button>
+        <h1 id="dayTitle"><small>Today</small>…</h1>
+        <button class="iconbtn" id="nextDay" aria-label="Next day">›</button>
+      </div>
+      <div class="prog"><div class="bar"><i id="progBar"></i></div><span><b id="progN">0</b> of <b id="progT">0</b> done</span><button class="pill" id="goToday" hidden>Today</button></div>
+    </div>
+    <div id="todayBody"></div>
+  </section>
+
+  <section id="vAhead" hidden>
+    <div class="top"><div class="dayrow"><h1><small>Next two weeks</small>Coming up</h1></div></div>
+    <div class="days" id="aheadDays"></div>
+    <div class="section"><h2>Bigger jobs, next 3 months</h2><ul class="list big" id="aheadBig"></ul></div>
+  </section>
+
+  <section id="vChores" hidden>
+    <div class="top"><div class="dayrow"><h1><small>Your list</small>All chores</h1></div></div>
+    <p class="note">Each chore has a set spot on the calendar so the work is spread out. Tap one to change when it happens.</p>
+    <div id="choreGroups"></div>
+    <button class="addbtn" id="addChore">Add a chore</button>
+  </section>
+  <p class="sync" id="sync">Saved on this device</p>
+</div>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" id="tToday" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Today</button>
+  <button role="tab" id="tAhead" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>Coming up</button>
+  <button role="tab" id="tChores" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Chores</button>
+</nav>
+
+<div class="sheet" id="sheet" hidden><div class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="edTitle"></div></div>
+<div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="toastUndo" hidden>Undo</button></div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+
+/* ---------- vocabulary ---------- */
+const WD=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const WD_LONG=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WEEKS=['1st (days 1–7)','2nd (8–14)','3rd (15–21)','4th (22–28)'];
+const ORD=['1st','2nd','3rd','4th'];
+// period = how many months one cycle lasts; slots say where in the cycle each visit lands
+const FREQ={
+  daily:     {label:'Daily',          period:0, color:'--c-daily'},
+  weekly:    {label:'Weekly',         period:0, color:'--c-weekly'},
+  twice:     {label:'2× a month',     period:1, color:'--c-twice', slots:2},
+  monthly:   {label:'Monthly',        period:1, color:'--c-monthly'},
+  quarterly: {label:'Every 3 months', period:3, color:'--c-quarter'},
+  half:      {label:'Every 6 months', period:6, color:'--c-half'},
+  yearly:    {label:'Yearly',         period:12,color:'--c-year'}
+};
+const FREQ_ORDER=['daily','weekly','twice','monthly','quarterly','half','yearly'];
+
+/* ---------- the chore list (from chore_list.xlsx), with a spread-out starting schedule ----------
+   w = weekday (0 Mon … 6 Sun), b = week of the month (0 = days 1–7 … 3 = days 22–28),
+   m = month within the cycle (for yearly, 0 = Jan). season = [first month, last month], 0 = Jan. */
+const DEFAULT_CHORES=[
+  {id:'dishes', name:'Put dishes away', freq:'daily'},
+  {id:'bed',    name:'Make bed',        freq:'daily'},
+
+  {id:'laundry',name:'Laundry',           freq:'weekly', slots:[{w:0}]},
+  {id:'dehum',  name:'Empty dehumidifier',freq:'weekly', slots:[{w:0}]},
+  {id:'dust',   name:'Dust',              freq:'weekly', slots:[{w:1}]},
+  {id:'vacuum', name:'Vacuum',            freq:'weekly', slots:[{w:1}]},
+  {id:'plants', name:'Water plants',      freq:'weekly', slots:[{w:2}]},
+  {id:'turtle', name:'Clean turtle tank', freq:'weekly', slots:[{w:3}]},
+  {id:'luna',   name:'Brush Luna',        freq:'weekly', slots:[{w:4}]},
+  {id:'bath',   name:'Clean bathrooms',   freq:'weekly', slots:[{w:5}]},
+  {id:'lawn',   name:'Mow lawn',          freq:'weekly', slots:[{w:5}], season:[3,10]},
+  {id:'grocery',name:'Grocery shop',      freq:'weekly', slots:[{w:6}]},
+  {id:'sheets', name:'Change bed sheets', freq:'weekly', slots:[{w:6}]},
+
+  {id:'downstairs',name:'Clean downstairs', freq:'twice', slots:[{m:0,b:0,w:4},{m:0,b:2,w:4}]},
+
+  {id:'bills',  name:'Pay bills / file',      freq:'monthly', slots:[{m:0,b:0,w:2}]},
+  {id:'salt',   name:'Check salt pellets',    freq:'monthly', slots:[{m:0,b:1,w:4}]},
+  {id:'shower', name:'Clean shower',          freq:'monthly', slots:[{m:0,b:1,w:3}]},
+  {id:'deepturtle',name:'Deep clean turtle tank',freq:'monthly', slots:[{m:0,b:3,w:2}]},
+  {id:'floors', name:'Wash hardwood floors',  freq:'monthly', slots:[{m:0,b:3,w:1}]},
+
+  {id:'water',  name:'Clean water filter',         freq:'quarterly', slots:[{m:0,b:1,w:2}]},
+  {id:'dwfilter',name:'Clean out dishwasher filter',freq:'quarterly', slots:[{m:0,b:3,w:4}]},
+  {id:'fridge', name:'Clean out refrigerator',     freq:'quarterly', slots:[{m:1,b:1,w:6}]},
+  {id:'hood',   name:'Wash hood filter',           freq:'quarterly', slots:[{m:1,b:3,w:4}]},
+  {id:'freezer',name:'Clean out freezer',          freq:'quarterly', slots:[{m:2,b:1,w:6}]},
+
+  {id:'heater', name:'Replace heater filter', freq:'half', slots:[{m:3,b:0,w:3}]},
+
+  {id:'tupper', name:'Reorganize tupperware', freq:'yearly', slots:[{m:0,b:1,w:5}]},
+  {id:'pantry', name:'Reorganize pantry',     freq:'yearly', slots:[{m:2,b:1,w:5}]},
+  {id:'closet', name:'Clean bedroom closet',  freq:'yearly', slots:[{m:4,b:1,w:2}]},
+  {id:'counters',name:'Reseal counters',      freq:'yearly', slots:[{m:6,b:2,w:2}]},
+  {id:'shoes',  name:'Clean out shoe closet', freq:'yearly', slots:[{m:8,b:2,w:2}]}
+];
+
+/* ---------- dates as local YYYY-MM-DD strings ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const ds=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const pd=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=pd(s);d.setDate(d.getDate()+n);return ds(d)};
+const wdOf=s=>(pd(s).getDay()+6)%7;
+const todayS=()=>ds(new Date());
+const fmtLong=s=>pd(s).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+const fmtShort=s=>pd(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+// first date in week-block b of a month that falls on weekday w (always exists: a block is 7 days)
+function blockDate(y,mo,b,w){for(let d=1+7*b;d<=7+7*b;d++){const x=new Date(y,mo,d);if((x.getDay()+6)%7===w)return ds(x)}}
+function inSeason(c,mo){if(!c.season)return true;const[a,z]=c.season;return a<=z?mo>=a&&mo<=z:mo>=a||mo<=z}
+
+/* every due date for a chore between two dates (inclusive) */
+function occurrences(c,from,to){
+  const out=[];
+  if(c.freq==='daily'||c.freq==='weekly'){
+    for(let s=from;s<=to;s=addDays(s,1)){
+      const mo=pd(s).getMonth();
+      if(!inSeason(c,mo))continue;
+      if(c.freq==='daily'||c.slots.some(sl=>sl.w===wdOf(s)))out.push(s);
+    }
+    return out;
+  }
+  const P=FREQ[c.freq].period,f=pd(from),t=pd(to);
+  for(let y=f.getFullYear(),mo=f.getMonth();y<t.getFullYear()||(y===t.getFullYear()&&mo<=t.getMonth());mo===11?(y++,mo=0):mo++){
+    if(!inSeason(c,mo))continue;
+    for(const sl of c.slots){
+      if(mo%P!==sl.m)continue;
+      const s=blockDate(y,mo,sl.b,sl.w);
+      if(s>=from&&s<=to)out.push(s);
+    }
+  }
+  return out.sort();
+}
+
+/* ---------- state ---------- */
+const LS='chore-planner-v1';
+let S=load();
+function load(){let x=null;try{x=JSON.parse(localStorage.getItem(LS)||'null')}catch(e){}return norm(x)}
+function norm(x){
+  x=x&&typeof x==='object'?x:{};
+  return{start:typeof x.start==='string'?x.start:todayS(),done:x.done&&typeof x.done==='object'?Object.assign({},x.done):{},moved:x.moved&&typeof x.moved==='object'?Object.assign({},x.moved):{},chores:Array.isArray(x.chores)?x.chores:null};
+}
+const chores=()=>S.chores||DEFAULT_CHORES;
+const keyOf=(id,due)=>id+'|'+due;
+const eff=(id,due)=>S.moved[keyOf(id,due)]||due;
+const isDone=(id,due)=>!!S.done[keyOf(id,due)];
+
+let ref=null,writing=Promise.resolve(),saveT=null,dirty=false,readOnly=false;
+function save(){
+  // forget records older than ~13 months so the saved data stays small
+  const cut=addDays(todayS(),-400);
+  for(const k of Object.keys(S.done))if(k.split('|')[1]<cut)delete S.done[k];
+  for(const k of Object.keys(S.moved))if(k.split('|')[1]<cut)delete S.moved[k];
+  try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}
+  if(!ref||readOnly)return;
+  dirty=true;clearTimeout(saveT);
+  saveT=setTimeout(()=>{
+    const body=JSON.parse(JSON.stringify(S));if(!body.chores)delete body.chores;
+    writing=writing.then(()=>ref.set(body)).then(()=>{dirty=false;setSync('Synced to your account')},e=>{
+      dirty=false;
+      if(e&&e.code==='invalid_argument'){readOnly=true;setSync('View only: changes stay on this device')}
+      else if(e&&e.code==='quota_exceeded')setSync('Cloud storage is full. Changes are saved on this device.');
+      else setSync('Couldn’t reach the cloud just now. Saved on this device.');
+    });
+  },500);
+}
+function setSync(t){$('sync').textContent=t}
+
+/* ---------- what is on a given day ---------- */
+const WINDOW_BACK=400;
+function itemsFor(day){
+  const t=todayS(),items=[],seen=new Set();
+  for(const c of chores()){
+    // scheduled (or moved) onto this day
+    const occ=occurrences(c,addDays(day,-WINDOW_BACK),addDays(day,60));
+    for(const due of occ){
+      if(eff(c.id,due)!==day||due<S.start&&!isDone(c.id,due))continue;
+      items.push({c,due,late:false});seen.add(keyOf(c.id,due));
+    }
+    // catch-up: on today only, the latest missed visit that hasn't been replaced by a newer one
+    if(day===t&&c.freq!=='daily'){
+      const past=occ.filter(d=>d<=t);const L=past[past.length-1];
+      if(L&&L>=S.start&&!seen.has(keyOf(c.id,L))&&eff(c.id,L)<t&&!isDone(c.id,L))items.push({c,due:L,late:true});
+    }
+  }
+  const rank=it=>FREQ_ORDER.indexOf(it.c.freq);
+  return items.sort((a,b)=>rank(b)-rank(a)||a.c.name.localeCompare(b.c.name));
+}
+
+/* ---------- auto-placement: pick the slot that lands on the least busy days ---------- */
+function loadMap(exceptId){
+  const m={},from=todayS(),to=addDays(from,364);
+  for(const c of chores()){if(c.id===exceptId||c.freq==='daily')continue;for(const d of occurrences(c,from,to))m[d]=(m[d]||0)+(c.freq==='weekly'?1:2)}
+  return m;
+}
+function autoSlots(freq,exceptId,season){
+  if(freq==='daily')return undefined;
+  const m=loadMap(exceptId),P=FREQ[freq].period,from=todayS(),to=addDays(from,364);
+  const score=slots=>{const ds_=occurrences({freq,slots,season},from,to);if(!ds_.length)return 1e9;return ds_.reduce((a,d)=>a+(m[d]||0),0)/ds_.length};
+  let cands=[];
+  if(freq==='weekly')cands=[0,1,2,3,4,5,6].map(w=>[{w}]);
+  else for(let mm=0;mm<P;mm++)for(let b=0;b<4;b++)for(let w=0;w<7;w++)cands.push([{m:mm,b,w}]);
+  let best=cands[0],bs=Infinity;
+  for(const c of cands){const s=score(c);if(s<bs-1e-9){bs=s;best=c}}
+  if(freq==='twice'){
+    // second visit two weeks after the first, on the least busy weekday
+    const b2=(best[0].b+2)%4;let b2best=null,b2s=Infinity;
+    for(let w=0;w<7;w++){const s=score([best[0],{m:0,b:b2,w}]);if(s<b2s){b2s=s;b2best={m:0,b:b2,w}}}
+    best=[best[0],b2best].sort((a,b)=>a.b-b.b);
+  }
+  return best;
+}
+
+/* ---------- describing a schedule in words ---------- */
+function monthsFor(P,m){const o=[];for(let i=m;i<12;i+=P)o.push(MON[i]);return o.join(', ')}
+function describe(c){
+  if(c.freq==='daily')return 'Every day';
+  let s;
+  if(c.freq==='weekly')s='Every '+c.slots.map(x=>WD_LONG[x.w]).join(' & ');
+  else if(c.freq==='twice'||c.freq==='monthly')s=c.slots.map(x=>ORD[x.b]+' '+WD[x.w]).join(' & ')+' of the month';
+  else{const x=c.slots[0];s=ORD[x.b]+' '+WD[x.w]+' of '+monthsFor(FREQ[c.freq].period,x.m)}
+  if(c.season)s+=' ('+MON[c.season[0]]+'–'+MON[c.season[1]]+' only)';
+  return s;
+}
+function nextDue(c){
+  const t=todayS(),occ=occurrences(c,t,addDays(t,800));
+  for(const d of occ){if(!isDone(c.id,d))return eff(c.id,d)}
+  return null;
+}
+
+/* ---------- views ---------- */
+let view='today',day=todayS(),lastToday=todayS();
+const CHECK='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="var(--card)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const chip=f=>`<span class="chip" style="--fc:var(${FREQ[f].color})">${FREQ[f].label}</span>`;
+
+function renderToday(){
+  const t=todayS();
+  const rel=day===t?'Today':day===addDays(t,1)?'Tomorrow':day===addDays(t,-1)?'Yesterday':pd(day).toLocaleDateString(undefined,{weekday:'long'});
+  $('dayTitle').innerHTML=`<small>${rel}</small>${esc(pd(day).toLocaleDateString(undefined,{month:'long',day:'numeric'}))}`;
+  $('goToday').hidden=day===t;
+  const items=itemsFor(day);
+  const late=items.filter(i=>i.late&&!isDone(i.c.id,i.due)),todo=items.filter(i=>!i.late&&!isDone(i.c.id,i.due)),done=items.filter(i=>isDone(i.c.id,i.due));
+  $('progN').textContent=done.length;$('progT').textContent=items.length;
+  $('progBar').style.width=(items.length?done.length/items.length*100:0)+'%';
+  const row=(it,cls)=>{
+    const k=keyOf(it.c.id,it.due),d=isDone(it.c.id,it.due),moved=S.moved[k];
+    let extra='';
+    if(it.late)extra=`<span>was due ${esc(fmtShort(eff(it.c.id,it.due)))}</span>`;
+    else if(moved)extra=`<span>moved from ${esc(fmtShort(it.due))}</span>`;
+    const canLater=!d&&day>=t;
+    return `<li class="task ${cls} ${d?'done':''}"><button class="check" data-act="toggle" data-k="${esc(k)}" aria-pressed="${d}" aria-label="${d?'Mark not done':'Mark done'}: ${esc(it.c.name)}">${CHECK}</button>
+      <div class="body"><span class="name">${esc(it.c.name)}</span><span class="meta">${chip(it.c.freq)}${extra}</span></div>
+      ${canLater&&it.c.freq!=='daily'?`<button class="later" data-act="later" data-k="${esc(k)}">Tomorrow</button>`:''}</li>`;
+  };
+  let h='';
+  if(late.length)h+=`<div class="section late"><h2>Catch up · ${late.length}</h2><ul class="list">${late.map(i=>row(i,'late')).join('')}</ul></div>`;
+  if(todo.length)h+=`<div class="section"><h2>${day===t?'To do today':'To do'}</h2><ul class="list">${todo.map(i=>row(i,'')).join('')}</ul></div>`;
+  if(!late.length&&!todo.length)h+=`<div class="section"><div class="empty">${items.length?'All done for '+(day===t?'today':'this day')+'. Nice work.':'Nothing scheduled.'}</div></div>`;
+  if(done.length)h+=`<div class="section"><h2>Done</h2><ul class="list">${done.map(i=>row(i,'')).join('')}</ul></div>`;
+  if(day<S.start)h+=`<p class="note" style="margin-top:14px">The planner started on ${esc(fmtShort(S.start))}, so earlier days only show what you checked off.</p>`;
+  $('todayBody').innerHTML=h;
+}
+
+function renderAhead(){
+  const t=todayS();let h='';
+  for(let i=0;i<14;i++){
+    const d=addDays(t,i),items=itemsFor(d).filter(x=>x.c.freq!=='daily'&&!x.late);
+    const open=items.filter(x=>!isDone(x.c.id,x.due));
+    const names=open.map(x=>esc(x.c.name)).join(', ')||'<span class="note">Just the daily ones</span>';
+    h+=`<button class="drow ${i===0?'today':''}" data-act="day" data-d="${d}"><span class="d"><span>${WD[wdOf(d)]}</span><b>${pd(d).getDate()}</b></span><span class="what">${names}</span><span class="n">${open.length?open.length:'✓'}</span></button>`;
+  }
+  $('aheadDays').innerHTML=h;
+  const big=[];
+  for(const c of chores()){
+    if(['daily','weekly','twice'].includes(c.freq))continue;
+    for(const due of occurrences(c,t,addDays(t,92)))if(!isDone(c.id,due))big.push({c,d:eff(c.id,due)});
+  }
+  big.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);
+  $('aheadBig').innerHTML=big.map(x=>`<li><span>${esc(x.c.name)}<br>${chip(x.c.freq)}</span><span class="when">${esc(fmtShort(x.d))}</span></li>`).join('')||'<li class="note">Nothing coming up.</li>';
+}
+
+function renderChores(){
+  let h='';
+  for(const f of FREQ_ORDER){
+    const list=chores().filter(c=>c.freq===f);if(!list.length)continue;
+    h+=`<div class="section"><h2>${chip(f)} <span style="font-weight:600">· ${list.length}</span></h2><div class="list">`+list.map(c=>{
+      const n=c.freq==='daily'?'':nextDue(c);
+      return `<button class="crow" data-act="edit" data-id="${esc(c.id)}"><span class="body"><span class="name">${esc(c.name)}</span><br><span class="sub">${esc(describe(c))}${n?' · next '+esc(fmtShort(n)):''}</span></span><span class="go" aria-hidden="true">›</span></button>`;
+    }).join('')+'</div></div>';
+  }
+  $('choreGroups').innerHTML=h;
+}
+
+function render(){
+  if(todayS()!==lastToday){if(day===lastToday)day=todayS();lastToday=todayS()}
+  for(const v of ['today','ahead','chores']){
+    $('v'+v[0].toUpperCase()+v.slice(1)).hidden=view!==v;
+    $('t'+v[0].toUpperCase()+v.slice(1)).setAttribute('aria-selected',view===v);
+  }
+  if(view==='today')renderToday();else if(view==='ahead')renderAhead();else renderChores();
+}
+
+/* ---------- actions ---------- */
+let toastT=null,undoFn=null;
+function toast(msg,undo){
+  $('toastMsg').textContent=msg;undoFn=undo||null;$('toastUndo').hidden=!undo;$('toast').hidden=false;
+  clearTimeout(toastT);toastT=setTimeout(()=>{$('toast').hidden=true;undoFn=null},3600);
+}
+$('toastUndo').onclick=()=>{if(undoFn){undoFn();undoFn=null}$('toast').hidden=true};
+
+function toggle(k){
+  if(S.done[k])delete S.done[k];else S.done[k]=new Date().toISOString();
+  save();render();
+}
+function later(k){
+  const[id,due]=k.split('|'),prev=S.moved[k],cur=prev||due,to=addDays(cur>=todayS()?cur:todayS(),1);
+  S.moved[k]=to;save();render();
+  const c=chores().find(x=>x.id===id);
+  toast(`${c?c.name:'Chore'} moved to ${fmtShort(to)}`,()=>{if(prev)S.moved[k]=prev;else delete S.moved[k];save();render()});
+}
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act;
+  if(a==='toggle')toggle(b.dataset.k);
+  else if(a==='later')later(b.dataset.k);
+  else if(a==='day'){day=b.dataset.d;view='today';render();window.scrollTo(0,0)}
+  else if(a==='edit')openEditor(b.dataset.id);
+});
+$('prevDay').onclick=()=>{day=addDays(day,-1);render()};
+$('nextDay').onclick=()=>{day=addDays(day,1);render()};
+$('goToday').onclick=()=>{day=todayS();render()};
+$('tToday').onclick=()=>{view='today';day=todayS();render();window.scrollTo(0,0)};
+$('tAhead').onclick=()=>{view='ahead';render();window.scrollTo(0,0)};
+$('tChores').onclick=()=>{view='chores';render();window.scrollTo(0,0)};
+$('addChore').onclick=()=>openEditor(null);
+
+/* ---------- chore editor ---------- */
+let ed=null,confirmDel=false;
+function opts(arr,sel){return arr.map(([v,l])=>`<option value="${v}"${String(v)===String(sel)?' selected':''}>${esc(l)}</option>`).join('')}
+function openEditor(id){
+  const c=id?chores().find(x=>x.id===id):null;
+  ed=c?JSON.parse(JSON.stringify(c)):{id:null,name:'',freq:'weekly',slots:autoSlots('weekly',null,null)};
+  confirmDel=false;drawEditor();$('sheet').hidden=false;
+  setTimeout(()=>{const n=$('edName');if(n&&!id)n.focus()},50);
+}
+function closeEditor(){$('sheet').hidden=true;ed=null}
+function slotFields(i,sl,P){
+  const wk=`<div class="field"><label for="b${i}">Week</label><select id="b${i}" data-slot="${i}" data-k="b">${opts(WEEKS.map((l,j)=>[j,l]),sl.b)}</select></div>`;
+  const wd=`<div class="field"><label for="w${i}">Day</label><select id="w${i}" data-slot="${i}" data-k="w">${opts(WD_LONG.map((l,j)=>[j,l]),sl.w)}</select></div>`;
+  if(ed.freq==='weekly')return wd;
+  let mo='';
+  if(P>1){const choices=[];for(let m=0;m<P;m++)choices.push([m,monthsFor(P,m)]);mo=`<div class="field"><label for="m${i}">${P===12?'Month':'Months'}</label><select id="m${i}" data-slot="${i}" data-k="m">${opts(choices,sl.m)}</select></div>`}
+  return `${mo}<div class="grid2">${wk}${wd}</div>`;
+}
+function drawEditor(){
+  const F=FREQ[ed.freq],P=F.period;
+  let sched='';
+  if(ed.freq==='daily')sched='<p class="hint">Shows up every day.</p>';
+  else sched=ed.slots.map((sl,i)=>`<div class="slot">${ed.slots.length>1?`<span class="lbl" style="font-size:13px;font-weight:700;color:var(--muted)">VISIT ${i+1}</span>`:''}${slotFields(i,sl,P)}</div>`).join('');
+  const seasonOn=!!ed.season;
+  $('panel').innerHTML=`
+    <h2 id="edTitle">${ed.id?'Edit chore':'New chore'}</h2>
+    <div class="field"><label for="edName">Chore</label><input id="edName" maxlength="60" value="${esc(ed.name)}" placeholder="e.g. Wipe baseboards" autocomplete="off"></div>
+    <div class="field"><label for="edFreq">How often</label><select id="edFreq">${opts(FREQ_ORDER.map(f=>[f,FREQ[f].label]),ed.freq)}</select></div>
+    <div class="field"><span class="lbl">When</span>${sched}${ed.freq!=='daily'?'<button class="pill" id="edAuto" style="align-self:flex-start">Pick the least busy day for me</button>':''}</div>
+    <div class="field"><label class="chk"><input type="checkbox" id="edSeason"${seasonOn?' checked':''}> Only part of the year</label>
+      ${seasonOn?`<div class="grid2"><div class="field"><label for="sA">From</label><select id="sA">${opts(MON.map((l,j)=>[j,l]),ed.season[0])}</select></div><div class="field"><label for="sZ">Through</label><select id="sZ">${opts(MON.map((l,j)=>[j,l]),ed.season[1])}</select></div></div>`:''}</div>
+    <p class="hint" id="edSummary">${ed.freq==='daily'?'':esc(describe(Object.assign({},ed)))}</p>
+    <div class="row"><button class="primary" id="edSave">Save</button><button id="edCancel">Cancel</button></div>
+    ${ed.id?`<div class="row"><button class="danger" id="edDel">${confirmDel?'Tap again to delete':'Delete chore'}</button></div>`:''}`;
+  $('edName').oninput=e=>{ed.name=e.target.value};
+  $('edFreq').onchange=e=>{
+    ed.freq=e.target.value;ed.slots=autoSlots(ed.freq,ed.id,ed.season);drawEditor();
+  };
+  $('panel').querySelectorAll('[data-slot]').forEach(s=>s.onchange=()=>{ed.slots[+s.dataset.slot][s.dataset.k]=+s.value;$('edSummary').textContent=describe(ed)});
+  if($('edAuto'))$('edAuto').onclick=()=>{ed.slots=autoSlots(ed.freq,ed.id,ed.season);drawEditor();toast('Moved to the least busy spot')};
+  $('edSeason').onchange=e=>{ed.season=e.target.checked?[3,10]:null;drawEditor()};
+  if($('sA')){$('sA').onchange=e=>{ed.season[0]=+e.target.value;$('edSummary').textContent=describe(ed)};$('sZ').onchange=e=>{ed.season[1]=+e.target.value;$('edSummary').textContent=describe(ed)}}
+  $('edCancel').onclick=closeEditor;
+  $('edSave').onclick=saveEditor;
+  if($('edDel'))$('edDel').onclick=()=>{
+    if(!confirmDel){confirmDel=true;drawEditor();return}
+    const list=chores().filter(x=>x.id!==ed.id),name=ed.name;S.chores=list;save();closeEditor();render();toast('Deleted '+name);
+  };
+}
+function saveEditor(){
+  const name=ed.name.trim().replace(/\s+/g,' ');
+  if(!name){toast('Give the chore a name');$('edName').focus();return}
+  const c={id:ed.id||('c'+Date.now().toString(36)),name,freq:ed.freq};
+  if(ed.freq!=='daily')c.slots=ed.slots;
+  if(ed.season)c.season=ed.season;
+  const list=chores().slice(),i=list.findIndex(x=>x.id===c.id);
+  if(i>=0)list[i]=c;else list.push(c);
+  S.chores=list;save();closeEditor();render();
+  toast(i>=0?'Saved':'Added '+name);
+}
+$('sheet').addEventListener('click',e=>{if(e.target===$('sheet'))closeEditor()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('sheet').hidden)closeEditor()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
+setInterval(()=>{if(todayS()!==lastToday)render()},60000);
+
+render();
+
+/* ---------- cloud sync (when opened as a Claude artifact) ---------- */
+(async()=>{
+  try{
+    if(!window.claude||!window.claude.use)return;
+    const db=await window.claude.use('db');if(!db)return;
+    ref=db.doc('planner/state');
+    setSync('Connecting…');
+    const timer=setTimeout(()=>setSync('Can’t reach the cloud yet. Saved on this device.'),10000);
+    let first=true;
+    ref.onSnapshot(snap=>{
+      if(!snap.metadata.fromCache)clearTimeout(timer);
+      if(snap.exists){
+        if(!dirty){S=norm(snap.data());try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}if($('sheet').hidden)render()}
+        if(!snap.metadata.fromCache)setSync('Synced to your account');
+      }else if(!snap.metadata.fromCache&&first){
+        first=false;setSync('Synced to your account');
+        save(); // first visit: store the start date and anything done on this device
+      }
+    },e=>{clearTimeout(timer);ref=null;setSync('Saved on this device')});
+  }catch(e){}
+})();
+})();
+</script>
+</body>
+</html>
