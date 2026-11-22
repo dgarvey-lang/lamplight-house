@@ -550,6 +550,7 @@ function drawEditor(){
   const seasonOn=!!ed.season;
   $('panel').innerHTML=`
     <h2 id="edTitle">${ed.id?'Edit chore':'New chore'}</h2>
+    ${ed.id&&ed.freq!=='daily'&&(chores().find(x=>x.id===ed.id)||{}).freq===ed.freq?'<button class="addbtn" id="edToday" style="margin-top:0">Move to today</button>':''}
     <div class="field"><label for="edName">Chore</label><input id="edName" maxlength="60" value="${esc(ed.name)}" placeholder="e.g. Wipe baseboards" autocomplete="off"></div>
     <div class="field"><label for="edFreq">How often</label><select id="edFreq">${opts(FREQ_ORDER.map(f=>[f,FREQ[f].label]),ed.freq)}</select></div>
     <div class="field"><span class="lbl">When</span>${sched}${ed.freq!=='daily'?'<button class="pill" id="edAuto" style="align-self:flex-start">Pick the least busy day for me</button>':''}</div>
@@ -568,10 +569,23 @@ function drawEditor(){
   if($('sA')){$('sA').onchange=e=>{ed.season[0]=+e.target.value;$('edSummary').textContent=describe(ed)};$('sZ').onchange=e=>{ed.season[1]=+e.target.value;$('edSummary').textContent=describe(ed)}}
   $('edCancel').onclick=closeEditor;
   $('edSave').onclick=saveEditor;
+  if($('edToday'))$('edToday').onclick=()=>bringToday(ed.id);
   if($('edDel'))$('edDel').onclick=()=>{
     if(!confirmDel){confirmDel=true;drawEditor();return}
     const before=chores().slice(),name=ed.name;S.chores=before.filter(x=>x.id!==ed.id);save();closeEditor();render();toast('Removed '+name,()=>{S.chores=before;save();render()});
   };
+}
+// put this chore's next open visit on today's list (only this time; the regular schedule stays)
+function bringToday(id){
+  const c=chores().find(x=>x.id===id),t=todayS();if(!c)return;
+  if(itemsFor(t).some(it=>it.c.id===id&&!isDone(id,it.due))){closeEditor();view='today';day=t;render();toast(c.name+' is already on today’s list');return}
+  const occ=occurrences(c,addDays(t,-WINDOW_BACK),addDays(t,800));
+  const due=occ.find(d=>d>=S.start&&!isDone(id,d)&&eff(id,d)>t);
+  if(!due){toast('No upcoming visit to move');return}
+  const k=keyOf(id,due),prev=S.moved[k];
+  if(due===t)delete S.moved[k];else S.moved[k]=t;
+  save();closeEditor();view='today';day=t;render();window.scrollTo(0,0);
+  toast(c.name+' moved to today',()=>{if(prev)S.moved[k]=prev;else delete S.moved[k];save();render()});
 }
 function saveEditor(){
   const name=ed.name.trim().replace(/\s+/g,' ');
