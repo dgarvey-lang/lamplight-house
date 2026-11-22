@@ -92,6 +92,7 @@ h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
 .cmain{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:none;background:none;padding:6px;text-align:left;border-radius:10px}
 .rm{flex:none;border:1px solid var(--line);background:transparent;color:var(--late);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700}
 .rm.sure{background:var(--late);border-color:var(--late);color:var(--card)}
+.later+.later{margin-left:-4px}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:22px}
 .actions button{border-radius:14px;padding:13px 10px;font-weight:700;font-size:16px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent)}
 .crow .body{flex:1;min-width:0}
@@ -389,7 +390,7 @@ function renderToday(){
     const canLater=!d&&day>=t;
     return `<li class="task ${cls} ${d?'done':''}"><button class="check" data-act="toggle" data-k="${esc(k)}" aria-pressed="${d}" aria-label="${d?'Mark not done':'Mark done'}: ${esc(it.c.name)}">${CHECK}</button>
       <div class="body"><span class="name">${esc(it.c.name)}</span><span class="meta">${chip(it.c.freq)}${extra}</span></div>
-      ${canLater&&it.c.freq!=='daily'?`<button class="later" data-act="later" data-k="${esc(k)}">Tomorrow</button>`:''}</li>`;
+      ${!d&&day>t&&it.c.freq!=='daily'?`<button class="later" data-act="totoday" data-k="${esc(k)}">Do today</button>`:''}${canLater&&day===t&&it.c.freq!=='daily'?`<button class="later" data-act="later" data-k="${esc(k)}">Tomorrow</button>`:''}</li>`;
   };
   let h='';
   if(late.length)h+=`<div class="section late"><h2>Catch up · ${late.length}</h2><ul class="list">${late.map(i=>row(i,'late')).join('')}</ul></div>`;
@@ -462,6 +463,14 @@ function removeChore(id){
   S.chores=before.filter(x=>x.id!==id);save();render();
   toast('Removed '+c.name,()=>{S.chores=before;save();render()});
 }
+function toToday(k){
+  const[id,due]=k.split('|'),prev=S.moved[k],t=todayS();
+  if(due===t)delete S.moved[k];else S.moved[k]=t;
+  save();
+  const c=chores().find(x=>x.id===id);
+  day=t;render();window.scrollTo(0,0);
+  toast(`${c?c.name:'Chore'} moved to today`,()=>{if(prev)S.moved[k]=prev;else delete S.moved[k];save();render()});
+}
 function later(k){
   const[id,due]=k.split('|'),prev=S.moved[k],cur=prev||due,to=addDays(cur>=todayS()?cur:todayS(),1);
   S.moved[k]=to;save();render();
@@ -474,6 +483,7 @@ document.addEventListener('click',e=>{
   const a=b.dataset.act;
   if(a==='toggle')toggle(b.dataset.k);
   else if(a==='later')later(b.dataset.k);
+  else if(a==='totoday')toToday(b.dataset.k);
   else if(a==='day'){day=b.dataset.d;view='today';render();window.scrollTo(0,0)}
   else if(a==='edit')openEditor(b.dataset.id);
   else if(a==='add')openEditor(null);
