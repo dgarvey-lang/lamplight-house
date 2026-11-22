@@ -21,5 +21,6 @@ A phone-friendly planner built from the full chore list (daily, weekly, twice a 
 - Tap a chore to check it off; tap **Tomorrow** to push it a day
 - Anything missed shows up under **Catch up** until it's done (or its next turn comes around)
 - **Coming up** shows the next two weeks and the bigger jobs ahead
-- **Chores** lets you rename, reschedule, add or delete chores; "Pick the least busy day" places a chore automatically
+- **+ Add a chore** and **− Remove a chore** buttons on the Today screen; Remove asks you to tap twice and can be undone
+- **Chores** lets you rename or reschedule any chore; "Pick the least busy day" places a chore automatically
 - Mowing only shows April through November

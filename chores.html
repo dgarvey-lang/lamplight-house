@@ -88,7 +88,12 @@ h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
 .big .when{color:var(--muted);font-size:14px;white-space:nowrap;font-variant-numeric:tabular-nums}
 
 /* chores */
-.crow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;width:100%;text-align:left}
+.crow{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 8px 6px 6px}
+.cmain{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:none;background:none;padding:6px;text-align:left;border-radius:10px}
+.rm{flex:none;border:1px solid var(--line);background:transparent;color:var(--late);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700}
+.rm.sure{background:var(--late);border-color:var(--late);color:var(--card)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:22px}
+.actions button{border-radius:14px;padding:13px 10px;font-weight:700;font-size:16px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent)}
 .crow .body{flex:1;min-width:0}
 .crow .name{font-weight:600}
 .crow .sub{font-size:14px;color:var(--muted)}
@@ -146,9 +151,10 @@ h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
 
   <section id="vChores" hidden>
     <div class="top"><div class="dayrow"><h1><small>Your list</small>All chores</h1></div></div>
-    <p class="note">Each chore has a set spot on the calendar so the work is spread out. Tap one to change when it happens.</p>
+    <p class="note">Each chore has a set spot on the calendar so the work is spread out. Tap one to change when it happens, or remove ones you no longer need.</p>
+    <button class="addbtn" data-act="add" style="margin-top:12px">+ Add a chore</button>
     <div id="choreGroups"></div>
-    <button class="addbtn" id="addChore">Add a chore</button>
+    <button class="addbtn" id="addChore">+ Add a chore</button>
   </section>
   <p class="sync" id="sync">Saved on this device</p>
 </div>
@@ -360,6 +366,7 @@ function nextDue(c){
 }
 
 /* ---------- views ---------- */
+let confirmRm=null,confirmT=null;
 let view='today',day=todayS(),lastToday=todayS();
 const CHECK='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="var(--card)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
@@ -390,6 +397,7 @@ function renderToday(){
   if(!late.length&&!todo.length)h+=`<div class="section"><div class="empty">${items.length?'All done for '+(day===t?'today':'this day')+'. Nice work.':'Nothing scheduled.'}</div></div>`;
   if(done.length)h+=`<div class="section"><h2>Done</h2><ul class="list">${done.map(i=>row(i,'')).join('')}</ul></div>`;
   if(day<S.start)h+=`<p class="note" style="margin-top:14px">The planner started on ${esc(fmtShort(S.start))}, so earlier days only show what you checked off.</p>`;
+  h+=`<div class="actions"><button data-act="add">+ Add a chore</button><button data-act="manage">− Remove a chore</button></div>`;
   $('todayBody').innerHTML=h;
 }
 
@@ -417,7 +425,8 @@ function renderChores(){
     const list=chores().filter(c=>c.freq===f);if(!list.length)continue;
     h+=`<div class="section"><h2>${chip(f)} <span style="font-weight:600">· ${list.length}</span></h2><div class="list">`+list.map(c=>{
       const n=c.freq==='daily'?'':nextDue(c);
-      return `<button class="crow" data-act="edit" data-id="${esc(c.id)}"><span class="body"><span class="name">${esc(c.name)}</span><br><span class="sub">${esc(describe(c))}${n?' · next '+esc(fmtShort(n)):''}</span></span><span class="go" aria-hidden="true">›</span></button>`;
+      const sure=confirmRm===c.id;
+      return `<div class="crow"><button class="cmain" data-act="edit" data-id="${esc(c.id)}"><span class="body"><span class="name">${esc(c.name)}</span><br><span class="sub">${esc(describe(c))}${n?' · next '+esc(fmtShort(n)):''}</span></span><span class="go" aria-hidden="true">›</span></button><button class="rm${sure?' sure':''}" data-act="rm" data-id="${esc(c.id)}" aria-label="${sure?'Confirm remove':'Remove'} ${esc(c.name)}">${sure?'Remove?':'Remove'}</button></div>`;
     }).join('')+'</div></div>';
   }
   $('choreGroups').innerHTML=h;
@@ -444,6 +453,13 @@ function toggle(k){
   if(S.done[k])delete S.done[k];else S.done[k]=new Date().toISOString();
   save();render();
 }
+function removeChore(id){
+  if(confirmRm!==id){confirmRm=id;clearTimeout(confirmT);confirmT=setTimeout(()=>{confirmRm=null;render()},4000);render();return}
+  confirmRm=null;clearTimeout(confirmT);
+  const before=chores().slice(),c=before.find(x=>x.id===id);if(!c)return;
+  S.chores=before.filter(x=>x.id!==id);save();render();
+  toast('Removed '+c.name,()=>{S.chores=before;save();render()});
+}
 function later(k){
   const[id,due]=k.split('|'),prev=S.moved[k],cur=prev||due,to=addDays(cur>=todayS()?cur:todayS(),1);
   S.moved[k]=to;save();render();
@@ -458,6 +474,9 @@ document.addEventListener('click',e=>{
   else if(a==='later')later(b.dataset.k);
   else if(a==='day'){day=b.dataset.d;view='today';render();window.scrollTo(0,0)}
   else if(a==='edit')openEditor(b.dataset.id);
+  else if(a==='add')openEditor(null);
+  else if(a==='manage'){view='chores';confirmRm=null;render();window.scrollTo(0,0);toast('Tap Remove next to a chore')}
+  else if(a==='rm')removeChore(b.dataset.id);
 });
 $('prevDay').onclick=()=>{day=addDays(day,-1);render()};
 $('nextDay').onclick=()=>{day=addDays(day,1);render()};
@@ -513,7 +532,7 @@ function drawEditor(){
   $('edSave').onclick=saveEditor;
   if($('edDel'))$('edDel').onclick=()=>{
     if(!confirmDel){confirmDel=true;drawEditor();return}
-    const list=chores().filter(x=>x.id!==ed.id),name=ed.name;S.chores=list;save();closeEditor();render();toast('Deleted '+name);
+    const before=chores().slice(),name=ed.name;S.chores=before.filter(x=>x.id!==ed.id);save();closeEditor();render();toast('Removed '+name,()=>{S.chores=before;save();render()});
   };
 }
 function saveEditor(){
