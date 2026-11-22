@@ -93,6 +93,9 @@ h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
 .rm{flex:none;border:1px solid var(--line);background:transparent;color:var(--late);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700}
 .rm.sure{background:var(--late);border-color:var(--late);color:var(--card)}
 .later+.later{margin-left:-4px}
+.daypicks{display:flex;flex-direction:column;gap:6px}
+.daypick{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:13px 14px;font-size:17px;text-align:left}
+.daypick span{color:var(--muted);font-size:15px;font-variant-numeric:tabular-nums}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:22px}
 .actions button{border-radius:14px;padding:13px 10px;font-weight:700;font-size:16px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent)}
 .crow .body{flex:1;min-width:0}
@@ -390,7 +393,7 @@ function renderToday(){
     const canLater=!d&&day>=t;
     return `<li class="task ${cls} ${d?'done':''}"><button class="check" data-act="toggle" data-k="${esc(k)}" aria-pressed="${d}" aria-label="${d?'Mark not done':'Mark done'}: ${esc(it.c.name)}">${CHECK}</button>
       <div class="body"><span class="name">${esc(it.c.name)}</span><span class="meta">${chip(it.c.freq)}${extra}</span></div>
-      ${!d&&day>t&&it.c.freq!=='daily'?`<button class="later" data-act="totoday" data-k="${esc(k)}">Do today</button>`:''}${canLater&&day===t&&it.c.freq!=='daily'?`<button class="later" data-act="later" data-k="${esc(k)}">Tomorrow</button>`:''}</li>`;
+      ${!d&&day>t&&it.c.freq!=='daily'?`<button class="later" data-act="totoday" data-k="${esc(k)}">Do today</button>`:''}${canLater&&day===t&&it.c.freq!=='daily'?`<button class="later" data-act="resched" data-k="${esc(k)}" aria-label="Reschedule ${esc(it.c.name)}">Reschedule</button>`:''}</li>`;
   };
   let h='';
   if(late.length)h+=`<div class="section late"><h2>Catch up · ${late.length}</h2><ul class="list">${late.map(i=>row(i,'late')).join('')}</ul></div>`;
@@ -484,6 +487,8 @@ document.addEventListener('click',e=>{
   if(a==='toggle')toggle(b.dataset.k);
   else if(a==='later')later(b.dataset.k);
   else if(a==='totoday')toToday(b.dataset.k);
+  else if(a==='resched')openResched(b.dataset.k);
+  else if(a==='moveto')moveTo(b.dataset.k,b.dataset.d);
   else if(a==='day'){day=b.dataset.d;view='today';render();window.scrollTo(0,0)}
   else if(a==='edit')openEditor(b.dataset.id);
   else if(a==='add')openEditor(null);
@@ -508,6 +513,27 @@ function openEditor(id){
   setTimeout(()=>{const n=$('edName');if(n&&!id)n.focus()},50);
 }
 function closeEditor(){$('sheet').hidden=true;ed=null}
+/* ---------- reschedule one visit of a chore ---------- */
+function openResched(k){
+  const[id]=k.split('|'),c=chores().find(x=>x.id===id),t=todayS();
+  let h='';
+  for(let i=1;i<=7;i++){
+    const d=addDays(t,i),lbl=i===1?'Tomorrow':pd(d).toLocaleDateString(undefined,{weekday:'long'});
+    h+=`<button class="daypick" data-act="moveto" data-k="${esc(k)}" data-d="${d}"><b>${esc(lbl)}</b><span>${esc(pd(d).toLocaleDateString(undefined,{month:'short',day:'numeric'}))}</span></button>`;
+  }
+  $('panel').innerHTML=`<h2 id="edTitle">Reschedule ${esc(c?c.name.toLowerCase():'chore')}</h2>
+    <p class="hint">Pick a new day. This only changes this time.</p>
+    <div class="daypicks">${h}</div>
+    <div class="row"><button id="mvCancel">Cancel</button></div>`;
+  $('mvCancel').onclick=closeEditor;
+  $('sheet').hidden=false;
+}
+function moveTo(k,d){
+  const[id,due]=k.split('|'),prev=S.moved[k],c=chores().find(x=>x.id===id);
+  if(d===due)delete S.moved[k];else S.moved[k]=d;
+  save();closeEditor();render();
+  toast(`${c?c.name:'Chore'} moved to ${d===addDays(todayS(),1)?'tomorrow':fmtShort(d)}`,()=>{if(prev)S.moved[k]=prev;else delete S.moved[k];save();render()});
+}
 function slotFields(i,sl,P){
   const wk=`<div class="field"><label for="b${i}">Week</label><select id="b${i}" data-slot="${i}" data-k="b">${opts(WEEKS.map((l,j)=>[j,l]),sl.b)}</select></div>`;
   const wd=`<div class="field"><label for="w${i}">Day</label><select id="w${i}" data-slot="${i}" data-k="w">${opts(WD_LONG.map((l,j)=>[j,l]),sl.w)}</select></div>`;

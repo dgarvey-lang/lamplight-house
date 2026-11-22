@@ -18,7 +18,7 @@ When opened outside Claude, progress is saved in the browser's local storage on 
 
 A phone-friendly planner built from the full chore list (daily, weekly, twice a month, monthly, every 3 and 6 months, yearly). Each chore gets a fixed spot on the calendar so the work is spread out, and the **Today** tab shows just what's due that day.
 
-- Tap a chore to check it off; tap **Tomorrow** to push it a day
+- Tap a chore to check it off; tap **Reschedule** to move it to another day this week (or **Do today** on a future day)
 - Anything missed shows up under **Catch up** until it's done (or its next turn comes around)
 - **Coming up** shows the next two weeks and the bigger jobs ahead
 - **+ Add a chore** and **− Remove a chore** buttons on the Today screen; Remove asks you to tap twice and can be undone
