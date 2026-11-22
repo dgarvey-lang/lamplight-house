@@ -324,6 +324,12 @@ function itemsFor(day){
       if(L&&L>=S.start&&!seen.has(keyOf(c.id,L))&&eff(c.id,L)<t&&!isDone(c.id,L))items.push({c,due:L,late:true});
     }
   }
+  // visits moved here from further away than the window above
+  for(const k of Object.keys(S.moved)){
+    if(S.moved[k]!==day||seen.has(k))continue;
+    const[id,due]=k.split('|'),c=chores().find(x=>x.id===id);
+    if(c&&occurrences(c,due,due).length){items.push({c,due,late:false});seen.add(k)}
+  }
   const rank=it=>FREQ_ORDER.indexOf(it.c.freq);
   return items.sort((a,b)=>rank(b)-rank(a)||a.c.name.localeCompare(b.c.name));
 }
