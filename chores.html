@@ -93,9 +93,6 @@ h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
 .rm{flex:none;border:1px solid var(--line);background:transparent;color:var(--late);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700}
 .rm.sure{background:var(--late);border-color:var(--late);color:var(--card)}
 .later+.later{margin-left:-4px}
-.daychips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.daychip{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:11px 8px;font-weight:600;font-size:15px}
-.daychip.cur{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:22px}
 .actions button{border-radius:14px;padding:13px 10px;font-weight:700;font-size:16px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent)}
 .crow .body{flex:1;min-width:0}
@@ -393,7 +390,7 @@ function renderToday(){
     const canLater=!d&&day>=t;
     return `<li class="task ${cls} ${d?'done':''}"><button class="check" data-act="toggle" data-k="${esc(k)}" aria-pressed="${d}" aria-label="${d?'Mark not done':'Mark done'}: ${esc(it.c.name)}">${CHECK}</button>
       <div class="body"><span class="name">${esc(it.c.name)}</span><span class="meta">${chip(it.c.freq)}${extra}</span></div>
-      ${!d&&day>t&&it.c.freq!=='daily'?`<button class="later" data-act="totoday" data-k="${esc(k)}">Do today</button>`:''}${canLater&&day===t&&it.c.freq!=='daily'?`<button class="later" data-act="later" data-k="${esc(k)}">Tomorrow</button>`:''}${canLater&&it.c.freq!=='daily'?`<button class="later" data-act="move" data-k="${esc(k)}" aria-label="Move ${esc(it.c.name)} to another day">Move</button>`:''}</li>`;
+      ${!d&&day>t&&it.c.freq!=='daily'?`<button class="later" data-act="totoday" data-k="${esc(k)}">Do today</button>`:''}${canLater&&day===t&&it.c.freq!=='daily'?`<button class="later" data-act="later" data-k="${esc(k)}">Tomorrow</button>`:''}</li>`;
   };
   let h='';
   if(late.length)h+=`<div class="section late"><h2>Catch up · ${late.length}</h2><ul class="list">${late.map(i=>row(i,'late')).join('')}</ul></div>`;
@@ -487,8 +484,6 @@ document.addEventListener('click',e=>{
   if(a==='toggle')toggle(b.dataset.k);
   else if(a==='later')later(b.dataset.k);
   else if(a==='totoday')toToday(b.dataset.k);
-  else if(a==='move')openMove(b.dataset.k);
-  else if(a==='moveto')moveTo(b.dataset.k,b.dataset.d);
   else if(a==='day'){day=b.dataset.d;view='today';render();window.scrollTo(0,0)}
   else if(a==='edit')openEditor(b.dataset.id);
   else if(a==='add')openEditor(null);
@@ -513,29 +508,6 @@ function openEditor(id){
   setTimeout(()=>{const n=$('edName');if(n&&!id)n.focus()},50);
 }
 function closeEditor(){$('sheet').hidden=true;ed=null}
-/* ---------- move one visit of a chore to any day ---------- */
-function openMove(k){
-  const[id,due]=k.split('|'),c=chores().find(x=>x.id===id),t=todayS(),cur=eff(id,due);
-  let chips='';
-  for(let i=0;i<14;i++){
-    const d=addDays(t,i),lbl=i===0?'Today':i===1?'Tomorrow':pd(d).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
-    chips+=`<button class="daychip${d===cur?' cur':''}" data-act="moveto" data-k="${esc(k)}" data-d="${d}"${d===cur?' aria-current="date"':''}>${esc(lbl)}</button>`;
-  }
-  $('panel').innerHTML=`<h2 id="edTitle">Move ${esc(c?c.name:'chore')}</h2>
-    <p class="hint">Now on ${esc(fmtLong(cur))}${due!==cur?' (usually '+esc(fmtShort(due))+')':''}. This moves just this one time; its regular schedule stays the same.</p>
-    <div class="daychips">${chips}</div>
-    <div class="field"><label for="mvDate">Or pick a date</label><input type="date" id="mvDate" min="${t}" value="${cur>=t?cur:t}"></div>
-    <div class="row"><button class="primary" id="mvGo">Move to this date</button><button id="mvCancel">Cancel</button></div>`;
-  $('mvGo').onclick=()=>{const v=$('mvDate').value;if(!v||v<t){toast('Pick today or a later date');return}moveTo(k,v)};
-  $('mvCancel').onclick=closeEditor;
-  $('sheet').hidden=false;
-}
-function moveTo(k,d){
-  const[id,due]=k.split('|'),prev=S.moved[k],c=chores().find(x=>x.id===id);
-  if(d===due)delete S.moved[k];else S.moved[k]=d;
-  save();closeEditor();render();
-  toast(`${c?c.name:'Chore'} moved to ${d===todayS()?'today':fmtShort(d)}`,()=>{if(prev)S.moved[k]=prev;else delete S.moved[k];save();render()});
-}
 function slotFields(i,sl,P){
   const wk=`<div class="field"><label for="b${i}">Week</label><select id="b${i}" data-slot="${i}" data-k="b">${opts(WEEKS.map((l,j)=>[j,l]),sl.b)}</select></div>`;
   const wd=`<div class="field"><label for="w${i}">Day</label><select id="w${i}" data-slot="${i}" data-k="w">${opts(WD_LONG.map((l,j)=>[j,l]),sl.w)}</select></div>`;
