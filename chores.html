@@ -450,8 +450,10 @@ function toast(msg,undo){
 $('toastUndo').onclick=()=>{if(undoFn){undoFn();undoFn=null}$('toast').hidden=true};
 
 function toggle(k){
-  if(S.done[k])delete S.done[k];else S.done[k]=new Date().toISOString();
+  const was=S.done[k],c=chores().find(x=>x.id===k.split('|')[0]),nm=c?c.name:'Chore';
+  if(was)delete S.done[k];else S.done[k]=new Date().toISOString();
   save();render();
+  toast(was?nm+' is back on your list':'Checked off '+nm.toLowerCase(),()=>{if(was)S.done[k]=was;else delete S.done[k];save();render()});
 }
 function removeChore(id){
   if(confirmRm!==id){confirmRm=id;clearTimeout(confirmT);confirmT=setTimeout(()=>{confirmRm=null;render()},4000);render();return}
